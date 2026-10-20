@@ -1,5 +1,8 @@
 name: probe
-on: workflow_dispatch
+on:
+  push:
+    branches: [arena/2eef0e9c-vaccine-tracker]
+  workflow_dispatch:
 jobs:
   x:
     runs-on: ubuntu-latest
