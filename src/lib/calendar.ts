@@ -1,9 +1,11 @@
-import type { ChildProfile, DoseView } from './types';
+import type { ReminderMoment } from './engine';
+import { parseISODate } from './date';
+import type { ChildProfile } from './types';
 
 /**
- * Calendar export — the one thing a web app can do that a closed tab cannot:
- * hand the visit dates to the phone's own calendar, so a reminder arrives even
- * if the app has not been opened for weeks.
+ * Calendar export: hands the dates a parent has planned to their own calendar,
+ * so a reminder can arrive even if the app has not been opened for weeks. The
+ * file is built on the phone; nothing is uploaded.
  */
 
 function pad(n: number): string {
@@ -24,7 +26,6 @@ function stampUTC(d: Date): string {
 }
 
 function fold(line: string): string {
-  // RFC 5545: keep lines under 75 octets.
   if (line.length <= 73) return line;
   const chunks: string[] = [];
   let rest = line;
@@ -40,24 +41,8 @@ function escape(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }
 
-function startOfToday(): number {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-}
-
-export function buildCalendar(profile: ChildProfile, doses: DoseView[], time = '09:00'): string {
+export function buildCalendar(profile: ChildProfile, moments: ReminderMoment[], time = '09:00'): string {
   const hour = Number(time.split(':')[0]) || 9;
-  const today = startOfToday();
-  // Alarms in the past would never fire, so only hand over today onwards.
-  const pending = doses.filter((d) => d.status !== 'done' && d.dueDate.getTime() >= today);
-  const groups = new Map<string, DoseView[]>();
-  for (const dose of pending) {
-    const key = `${dose.dueDate.getFullYear()}-${dose.dueDate.getMonth()}-${dose.dueDate.getDate()}`;
-    const list = groups.get(key) ?? [];
-    list.push(dose);
-    groups.set(key, list);
-  }
-
   const now = new Date();
   const lines: string[] = [
     'BEGIN:VCALENDAR',
@@ -68,20 +53,20 @@ export function buildCalendar(profile: ChildProfile, doses: DoseView[], time = '
     `X-WR-CALNAME:${escape(`${profile.name} · vaccinations`)}`,
   ];
 
-  for (const [, list] of groups) {
-    const date = list[0].dueDate;
-    const names = list.map((d) => d.name).join(', ');
-    const details = list.map((d) => `${d.name} — ${d.protects} (${d.route})`).join('\n');
+  for (const moment of moments) {
+    if (!moment.titles.length) continue;
+    const date = parseISODate(moment.date);
+    const names = moment.titles.join(', ');
     lines.push(
       'BEGIN:VEVENT',
-      `UID:vr-${profile.id}-${date.getTime()}@vaccine-routine`,
+      `UID:vr-${profile.id}-${moment.date}@vaccine-routine`,
       `DTSTAMP:${stampUTC(now)}`,
       `DTSTART:${stamp(date, hour)}`,
       `DTEND:${stamp(date, hour + 1)}`,
-      fold(`SUMMARY:${escape(`${profile.name} · ${list.length === 1 ? list[0].name : names}`)}`),
+      fold(`SUMMARY:${escape(`${profile.name} · ${names}`)}`),
       fold(
         `DESCRIPTION:${escape(
-          `${details}\n\nFrom Vaccine Routine, India's National Immunization Schedule.`,
+          `${moment.titles.join('\n')}\n\nPlanned in Vaccine Routine. Stored on this phone.`,
         )}`,
       ),
       'TRANSP:TRANSPARENT',
@@ -103,14 +88,8 @@ export function buildCalendar(profile: ChildProfile, doses: DoseView[], time = '
   return lines.join('\r\n');
 }
 
-export function downloadCalendar(profile: ChildProfile, doses: DoseView[], time?: string): number {
-  const content = buildCalendar(profile, doses, time);
-  const today = startOfToday();
-  const count = new Set(
-    doses
-      .filter((d) => d.status !== 'done' && d.dueDate.getTime() >= today)
-      .map((d) => d.dueDate.toDateString()),
-  ).size;
+export function downloadCalendar(profile: ChildProfile, moments: ReminderMoment[], time?: string): number {
+  const content = buildCalendar(profile, moments, time);
   const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -120,5 +99,5 @@ export function downloadCalendar(profile: ChildProfile, doses: DoseView[], time?
   a.click();
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 2000);
-  return count;
+  return moments.length;
 }

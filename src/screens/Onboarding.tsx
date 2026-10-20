@@ -59,8 +59,8 @@ export function Onboarding() {
           in its <em>place.</em>
         </h1>
         <p className="onboard-lede">
-          A calm record of your baby’s vaccinations — and a quiet reminder before each visit. Built for
-          India’s national schedule.
+          A calm, private record of your child’s vaccinations. You add every entry yourself — and India’s
+          national schedule is there to suggest what comes next.
         </p>
 
         <div className="onboard-art" aria-hidden="true">
@@ -99,9 +99,7 @@ export function Onboarding() {
         </label>
 
         <label className="field">
-          <span className="label">
-            Date of birth <span className="tiny">{today}</span>
-          </span>
+          <span className="label">Date of birth</span>
           <input
             className="input"
             type="date"

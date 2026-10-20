@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
+import { NavigationRoute, registerRoute } from 'workbox-routing';
 
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: Array<{ url: string; revision?: string | null }>;
@@ -7,6 +8,10 @@ declare const self: ServiceWorkerGlobalScope & {
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
+
+// Any in-app navigation (including `/`) is served the precached shell, so the
+// app opens with no signal.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
 
 self.addEventListener('install', () => {
   void self.skipWaiting();

@@ -1,18 +1,19 @@
 import { IconBell, IconCalendar, IconSun, IconUser } from './Icon';
-import { useDoses } from '../lib/store';
+import { useApp } from '../lib/store';
+import { entryStatus } from '../lib/engine';
 
 export type TabKey = 'today' | 'schedule' | 'nudges' | 'you';
 
 const ITEMS: Array<{ key: TabKey; label: string; icon: typeof IconSun }> = [
   { key: 'today', label: 'Today', icon: IconSun },
-  { key: 'schedule', label: 'Schedule', icon: IconCalendar },
+  { key: 'schedule', label: 'Record', icon: IconCalendar },
   { key: 'nudges', label: 'Reminders', icon: IconBell },
   { key: 'you', label: 'You', icon: IconUser },
 ];
 
 export function TabBar({ active, onChange }: { active: TabKey; onChange: (tab: TabKey) => void }) {
-  const doses = useDoses();
-  const needsAttention = doses.some((d) => d.status === 'overdue');
+  const { entries } = useApp();
+  const needsAttention = entries.some((entry) => entryStatus(entry) === 'overdue');
 
   return (
     <nav className="nav" aria-label="Main">

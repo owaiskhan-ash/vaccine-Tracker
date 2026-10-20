@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { buildDoseViews } from './engine';
 import { toISODate } from './date';
 import {
   clearState,
@@ -17,34 +16,36 @@ import {
   requestPersistentStorage,
   saveState,
 } from './storage';
-import type { AppState, ChildProfile, DoseRecord, Settings } from './types';
+import type { AppState, ChildProfile, Settings, VaccineEntry } from './types';
+
+export type NewChild = Omit<ChildProfile, 'id' | 'createdAt'>;
+export type NewEntry = Omit<VaccineEntry, 'id' | 'createdAt'>;
 
 type Action =
   | { type: 'add-child'; child: ChildProfile }
   | { type: 'update-child'; id: string; patch: Partial<ChildProfile> }
   | { type: 'remove-child'; id: string }
   | { type: 'set-active'; id: string }
-  | { type: 'mark-done'; childId: string; doseId: string; record: DoseRecord }
-  | { type: 'undo'; childId: string; doseId: string }
+  | { type: 'add-entry'; childId: string; entry: VaccineEntry }
+  | { type: 'update-entry'; childId: string; entryId: string; patch: Partial<VaccineEntry> }
+  | { type: 'remove-entry'; childId: string; entryId: string }
   | { type: 'settings'; patch: Partial<Settings> }
-  | { type: 'dismiss'; key: string }
   | { type: 'reset' };
 
-function markDone(state: AppState, childId: string, doseId: string, record: DoseRecord): AppState {
-  return {
-    ...state,
-    records: {
-      ...state.records,
-      [childId]: { ...(state.records[childId] ?? {}), [doseId]: record },
-    },
-  };
+function withEntries(state: AppState, childId: string, list: VaccineEntry[]): AppState {
+  return { ...state, entries: { ...state.entries, [childId]: list } };
 }
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'add-child': {
       const children = [...state.children, action.child];
-      return { ...state, children, activeId: action.child.id };
+      return {
+        ...state,
+        children,
+        activeId: action.child.id,
+        entries: { ...state.entries, [action.child.id]: [] },
+      };
     }
     case 'update-child':
       return {
@@ -53,30 +54,39 @@ function reducer(state: AppState, action: Action): AppState {
       };
     case 'remove-child': {
       const children = state.children.filter((c) => c.id !== action.id);
-      const records = { ...state.records };
-      delete records[action.id];
+      const entries = { ...state.entries };
+      delete entries[action.id];
       return {
         ...state,
         children,
-        records,
+        entries,
         activeId: state.activeId === action.id ? children[0]?.id ?? null : state.activeId,
       };
     }
     case 'set-active':
       return { ...state, activeId: action.id };
-    case 'mark-done':
-      return markDone(state, action.childId, action.doseId, action.record);
-    case 'undo': {
-      const childRecords = { ...(state.records[action.childId] ?? {}) };
-      delete childRecords[action.doseId];
-      return { ...state, records: { ...state.records, [action.childId]: childRecords } };
+    case 'add-entry': {
+      const list = state.entries[action.childId] ?? [];
+      return withEntries(state, action.childId, [action.entry, ...list]);
+    }
+    case 'update-entry': {
+      const list = state.entries[action.childId] ?? [];
+      return withEntries(
+        state,
+        action.childId,
+        list.map((entry) => (entry.id === action.entryId ? { ...entry, ...action.patch } : entry)),
+      );
+    }
+    case 'remove-entry': {
+      const list = state.entries[action.childId] ?? [];
+      return withEntries(
+        state,
+        action.childId,
+        list.filter((entry) => entry.id !== action.entryId),
+      );
     }
     case 'settings':
       return { ...state, settings: { ...state.settings, ...action.patch } };
-    case 'dismiss':
-      return state.dismissed.includes(action.key)
-        ? state
-        : { ...state, dismissed: [...state.dismissed, action.key] };
     case 'reset':
       return emptyState();
     default:
@@ -88,23 +98,6 @@ function initialState(): AppState {
   return loadState() ?? emptyState();
 }
 
-type AppContextValue = {
-  state: AppState;
-  child: ChildProfile | null;
-  dispatch: React.Dispatch<Action>;
-  addChild: (input: Omit<ChildProfile, 'id' | 'createdAt'>) => ChildProfile;
-  updateChild: (id: string, patch: Partial<ChildProfile>) => void;
-  removeChild: (id: string) => void;
-  setActive: (id: string) => void;
-  markDoseDone: (doseId: string, record?: Partial<DoseRecord>) => void;
-  undoDose: (doseId: string) => void;
-  setSettings: (patch: Partial<Settings>) => void;
-  dismiss: (key: string) => void;
-  resetAll: () => void;
-};
-
-const AppContext = createContext<AppContextValue | null>(null);
-
 function uid(): string {
   try {
     return crypto.randomUUID();
@@ -112,6 +105,24 @@ function uid(): string {
     return `id-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
   }
 }
+
+type AppContextValue = {
+  state: AppState;
+  child: ChildProfile | null;
+  children: ChildProfile[];
+  entries: VaccineEntry[];
+  addChild: (input: NewChild) => ChildProfile;
+  updateChild: (id: string, patch: Partial<ChildProfile>) => void;
+  removeChild: (id: string) => void;
+  setActive: (id: string) => void;
+  addEntry: (input: NewEntry) => VaccineEntry | null;
+  updateEntry: (id: string, patch: Partial<NewEntry>) => void;
+  removeEntry: (id: string) => void;
+  setSettings: (patch: Partial<Settings>) => void;
+  resetAll: () => void;
+};
+
+const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
@@ -134,7 +145,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const addChild = useCallback((input: Omit<ChildProfile, 'id' | 'createdAt'>) => {
+  const addChild = useCallback((input: NewChild) => {
     const child: ChildProfile = { ...input, id: uid(), createdAt: new Date().toISOString() };
     dispatch({ type: 'add-child', child });
     return child;
@@ -142,30 +153,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppContextValue>(() => {
     const child = state.children.find((c) => c.id === state.activeId) ?? state.children[0] ?? null;
+    const entries = child ? state.entries[child.id] ?? [] : [];
+
     return {
       state,
       child,
-      dispatch,
+      children: state.children,
+      entries,
       addChild,
       updateChild: (id, patch) => dispatch({ type: 'update-child', id, patch }),
       removeChild: (id) => dispatch({ type: 'remove-child', id }),
       setActive: (id) => dispatch({ type: 'set-active', id }),
-      markDoseDone: (doseId, record = {}) => {
-        if (!child) return;
+      addEntry: (input) => {
+        if (!child) return null;
         const now = new Date();
-        dispatch({
-          type: 'mark-done',
-          childId: child.id,
-          doseId,
-          record: { at: now.toISOString(), on: record.on ?? toISODate(now), ...record },
-        });
+        const entry: VaccineEntry = {
+          ...input,
+          id: uid(),
+          createdAt: now.toISOString(),
+        };
+        if (!entry.givenOn && !entry.dueOn) entry.dueOn = toISODate(now);
+        dispatch({ type: 'add-entry', childId: child.id, entry });
+        return entry;
       },
-      undoDose: (doseId) => {
+      updateEntry: (id, patch) => {
         if (!child) return;
-        dispatch({ type: 'undo', childId: child.id, doseId });
+        dispatch({ type: 'update-entry', childId: child.id, entryId: id, patch });
+      },
+      removeEntry: (id) => {
+        if (!child) return;
+        dispatch({ type: 'remove-entry', childId: child.id, entryId: id });
       },
       setSettings: (patch) => dispatch({ type: 'settings', patch }),
-      dismiss: (key) => dispatch({ type: 'dismiss', key }),
       resetAll: () => {
         clearState();
         dispatch({ type: 'reset' });
@@ -180,16 +199,6 @@ export function useApp(): AppContextValue {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used inside AppProvider');
   return ctx;
-}
-
-/** Doses for the active child, recalculated when anything relevant changes. */
-export function useDoses() {
-  const { state, child } = useApp();
-  const today = toISODate(useNow(60_000));
-  return useMemo(() => {
-    if (!child) return [];
-    return buildDoseViews(child, state.records[child.id]);
-  }, [child, state.records, today]);
 }
 
 /** A ticking clock so "today" stays fresh without a reload. */
@@ -207,4 +216,9 @@ export function useNow(intervalMs = 60_000): Date {
     };
   }, [intervalMs]);
   return now;
+}
+
+/** Today as a stable key, so memos refresh at midnight. */
+export function useTodayKey(): string {
+  return toISODate(useNow(60_000));
 }

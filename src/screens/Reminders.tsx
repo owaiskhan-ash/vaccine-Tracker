@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { reminderPlan, upcomingVisits } from '../lib/engine';
-import { formatDayMonth, formatTime, parseISODate, relativeToToday } from '../lib/date';
-import { useApp, useDoses } from '../lib/store';
+import { calendarMoments, plannedMoments } from '../lib/engine';
+import { formatDayMonth, formatTime, parseISODate, toISODate } from '../lib/date';
+import { useApp, useNow } from '../lib/store';
 import {
+  nextReminderLabel,
   notificationsSupported,
   permissionState,
   requestPermission,
@@ -10,7 +11,7 @@ import {
 } from '../lib/reminders';
 import { ACCENTS } from '../lib/storage';
 import { downloadCalendar } from '../lib/calendar';
-import { IconBell, IconCalendar, IconCheck, IconClock, IconInfo, IconShield } from '../components/Icon';
+import { IconBell, IconCalendar, IconCheck, IconClock, IconInfo, IconPlus, IconShield } from '../components/Icon';
 
 const LEADS = [
   { days: 1, label: '1 day' },
@@ -18,21 +19,38 @@ const LEADS = [
   { days: 7, label: '1 week' },
 ];
 
-export function RemindersScreen() {
-  const { state, child, setSettings } = useApp();
-  const doses = useDoses();
-  const now = useMemo(() => new Date(), []);
+function gapLabel(dateISO: string, now: Date): string {
+  const day = parseISODate(dateISO);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((day.getTime() - today.getTime()) / 86_400_000);
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  if (days > 0) return `in ${days} days`;
+  if (days === -1) return 'yesterday';
+  return `${Math.abs(days)} days late`;
+}
+
+export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
+  const { state, child, entries, setSettings } = useApp();
+  const now = useNow(60_000);
+  const todayKey = toISODate(now);
   const [permission, setPermission] = useState(() => permissionState());
   const [tested, setTested] = useState(false);
   const [busy, setBusy] = useState(false);
   const [tried, setTried] = useState(false);
   const [added, setAdded] = useState(0);
 
+  const planned = useMemo(() => plannedMoments(entries), [entries]);
+  const future = useMemo(
+    () => calendarMoments(entries, new Date(`${todayKey}T12:00:00`)),
+    [entries, todayKey],
+  );
+
   if (!child) return null;
   const accent = ACCENTS[child.accent] ?? ACCENTS.sand;
-  const plan = reminderPlan(doses, state.settings.leadDays, now);
   const supported = notificationsSupported();
   const on = state.settings.reminders;
+  const nextLabel = nextReminderLabel(state);
 
   async function toggle(next: boolean) {
     if (!next) {
@@ -73,7 +91,8 @@ export function RemindersScreen() {
           <em>nudge.</em>
         </h1>
         <p className="lede">
-          One reminder before each visit, and one on the day. No streaks, no guilt, no noise.
+          One reminder before each date you have planned, and one on the day. Nothing else, and nothing
+          leaves the phone.
         </p>
       </header>
 
@@ -85,7 +104,13 @@ export function RemindersScreen() {
           <div className="rem-copy">
             <span className="rem-title">Reminders for {child.name}</span>
             <span className="rem-sub">
-              {on ? `Arrive at ${formatTime(state.settings.time)}` : 'Currently switched off'}
+              {on
+                ? nextLabel
+                  ? `Next nudge ${nextLabel} · ${formatTime(state.settings.time)}`
+                  : planned.length
+                    ? `On at ${formatTime(state.settings.time)} — the next planned date is further out`
+                    : `On at ${formatTime(state.settings.time)} — add a planned date to hear one`
+                : 'Currently switched off'}
             </span>
           </div>
           <button
@@ -154,79 +179,85 @@ export function RemindersScreen() {
         {permission === 'denied' && tried ? (
           <p className="rem-warn">
             Notifications are blocked for this site. You can re-enable them in your browser’s site
-            settings — the app will still show every due dose inside the app.
+            settings — every planned date still shows inside the app.
           </p>
         ) : permission === 'default' && on ? (
-          <p className="rem-warn">
-            One more step: allow notifications above so the nudge can reach you.
-          </p>
+          <p className="rem-warn">One more step: allow notifications above so the nudge can reach you.</p>
         ) : null}
         {!supported ? (
           <p className="rem-warn">
             This browser doesn’t support notifications. Everything else works exactly the same, and the
-            in-app timeline below always shows what is coming.
+            list below always shows what is planned.
           </p>
         ) : null}
       </section>
 
       <section className="timeline">
         <div className="between">
-          <span className="eyebrow">What’s coming</span>
+          <span className="eyebrow">Planned dates</span>
           <span className="tiny">
-            {plan.length ? `${plan.length} reminder${plan.length === 1 ? '' : 's'} queued` : 'next visits'}
+            {planned.length
+              ? `${planned.length} date${planned.length === 1 ? '' : 's'}`
+              : 'nothing planned'}
           </span>
         </div>
         <ol className="timeline-list">
-          {(plan.length ? plan : upcomingVisits(doses)).map((item) => {
-            const days = Math.round(
-              (parseISODate(item.date).getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
-                86400000,
-            );
+          {planned.map((moment) => {
+            const late = moment.date < todayKey;
             return (
-              <li key={item.date} className="timeline-item">
+              <li key={moment.date} className="timeline-item">
                 <span className="timeline-dot" aria-hidden="true" />
                 <div className="timeline-body">
                   <span className="timeline-date">
-                    {formatDayMonth(parseISODate(item.date))}
-                    <span className={`timeline-rel${days < 0 ? ' now' : ''}`}>
-                      {days < 0 ? 'due now' : relativeToToday(days, '')}
+                    {formatDayMonth(parseISODate(moment.date))}
+                    <span className={`timeline-rel${late ? ' now' : ''}`}>
+                      {gapLabel(moment.date, now)}
                     </span>
                   </span>
-                  <span className="timeline-names">
-                    {item.doses.map((d) => d.short).join(' · ')}
-                  </span>
+                  <span className="timeline-names">{moment.titles.join(' · ')}</span>
                 </div>
               </li>
             );
           })}
-          {plan.length === 0 && upcomingVisits(doses).length === 0 ? (
+          {planned.length === 0 ? (
             <li className="timeline-empty">
-              <IconCheck size={16} /> Every dose is recorded.
+              <span>No dates planned yet. Add a vaccination with a date and it will show up here.</span>
             </li>
           ) : null}
         </ol>
+        {planned.length === 0 ? (
+          <button className="btn ghost sm wide timeline-add" onClick={onAddEntry}>
+            <IconPlus size={15} /> Plan a vaccination
+          </button>
+        ) : null}
       </section>
 
-      <button
-        className="cal-row"
-        onClick={() => {
-          const count = downloadCalendar(child, doses, state.settings.time);
-          setAdded(count);
-          window.setTimeout(() => setAdded(0), 6000);
-        }}
-      >
-        <span className="cal-icon">
-          <IconCalendar size={18} />
-        </span>
-        <span className="cal-copy">
-          <strong>{added ? `${added} visit${added === 1 ? '' : 's'} added to your calendar` : 'Add visits to your calendar'}</strong>
-          <span>
-            {added
-              ? 'Open the downloaded file to finish — reminders then arrive even when this app is closed.'
-              : 'Downloads a calendar file with a reminder the day before each visit.'}
+      {future.length ? (
+        <button
+          className="cal-row"
+          onClick={() => {
+            const count = downloadCalendar(child, future, state.settings.time);
+            setAdded(count);
+            window.setTimeout(() => setAdded(0), 6000);
+          }}
+        >
+          <span className="cal-icon">
+            <IconCalendar size={18} />
           </span>
-        </span>
-      </button>
+          <span className="cal-copy">
+            <strong>
+              {added
+                ? `${added} visit${added === 1 ? '' : 's'} added to your calendar`
+                : 'Add planned visits to your calendar'}
+            </strong>
+            <span>
+              {added
+                ? 'Open the downloaded file to finish — reminders then arrive even when this app is closed.'
+                : 'Downloads a calendar file made on this phone, with a reminder the day before.'}
+            </span>
+          </span>
+        </button>
+      ) : null}
 
       <div className="note-card">
         <IconInfo size={16} />

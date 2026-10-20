@@ -5,11 +5,13 @@ import { TodayScreen } from './screens/Today';
 import { ScheduleScreen } from './screens/Schedule';
 import { RemindersScreen } from './screens/Reminders';
 import { SettingsScreen } from './screens/Settings';
-import { DoseSheet } from './components/DoseSheet';
+import { EntrySheet } from './components/EntrySheet';
+import { SuggestSheet } from './components/SuggestSheet';
 import { ChildSheet } from './components/ChildSheet';
 import { TabBar, type TabKey } from './components/TabBar';
 import { syncReminders } from './lib/reminders';
 import { IconCheck } from './components/Icon';
+import type { EntryPrefill } from './lib/types';
 
 type Toast = { id: number; message: string; action?: { label: string; run: () => void } };
 
@@ -23,10 +25,15 @@ function readTab(): TabKey {
   return 'today';
 }
 
+type EntrySheetState = { open: boolean; entryId: string | null; prefill: EntryPrefill | null };
+
+const CLOSED_ENTRY: EntrySheetState = { open: false, entryId: null, prefill: null };
+
 function Shell() {
   const { state, child } = useApp();
   const [tab, setTab] = useState<TabKey>(readTab);
-  const [doseId, setDoseId] = useState<string | null>(null);
+  const [entrySheet, setEntrySheet] = useState<EntrySheetState>(CLOSED_ENTRY);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [childSheet, setChildSheet] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -44,6 +51,19 @@ function Shell() {
     setTab(next);
     window.location.hash = next === 'today' ? '' : next;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  const openNewEntry = useCallback(() => {
+    setEntrySheet({ open: true, entryId: null, prefill: null });
+  }, []);
+
+  const openEntry = useCallback((id: string) => {
+    setEntrySheet({ open: true, entryId: id, prefill: null });
+  }, []);
+
+  const openPrefilled = useCallback((prefill: EntryPrefill) => {
+    setSuggestOpen(false);
+    setEntrySheet({ open: true, entryId: null, prefill });
   }, []);
 
   useEffect(() => {
@@ -88,14 +108,23 @@ function Shell() {
     <div className="shell">
       {tab === 'today' ? (
         <TodayScreen
-          onOpenDose={setDoseId}
+          onAddEntry={openNewEntry}
+          onOpenEntry={openEntry}
+          onOpenSuggestions={() => setSuggestOpen(true)}
+          onPickSuggestion={openPrefilled}
           onGoNudges={() => go('nudges')}
           onGoSchedule={() => go('schedule')}
           onOpenProfile={() => setChildSheet({ open: true, id: child.id })}
         />
       ) : null}
-      {tab === 'schedule' ? <ScheduleScreen onOpenDose={setDoseId} /> : null}
-      {tab === 'nudges' ? <RemindersScreen /> : null}
+      {tab === 'schedule' ? (
+        <ScheduleScreen
+          onAddEntry={openNewEntry}
+          onOpenEntry={openEntry}
+          onOpenSuggestions={() => setSuggestOpen(true)}
+        />
+      ) : null}
+      {tab === 'nudges' ? <RemindersScreen onAddEntry={openNewEntry} /> : null}
       {tab === 'you' ? (
         <SettingsScreen
           onEditChild={(id) => setChildSheet({ open: true, id })}
@@ -106,7 +135,19 @@ function Shell() {
 
       <TabBar active={tab} onChange={go} />
 
-      <DoseSheet doseId={doseId} onClose={() => setDoseId(null)} onToast={showToast} />
+      <EntrySheet
+        open={entrySheet.open}
+        entryId={entrySheet.entryId}
+        prefill={entrySheet.prefill}
+        onClose={() => setEntrySheet(CLOSED_ENTRY)}
+        onToast={showToast}
+      />
+
+      <SuggestSheet
+        open={suggestOpen}
+        onClose={() => setSuggestOpen(false)}
+        onPick={openPrefilled}
+      />
 
       <ChildSheet
         open={childSheet.open}

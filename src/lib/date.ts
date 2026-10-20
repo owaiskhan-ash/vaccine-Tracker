@@ -17,10 +17,6 @@ export function parseISODate(s: string): Date {
   return new Date(y, (m || 1) - 1, d || 1);
 }
 
-export function todayISO(now = new Date()): string {
-  return toISODate(now);
-}
-
 export function addDays(d: Date, days: number): Date {
   const copy = new Date(d);
   copy.setDate(copy.getDate() + days);
@@ -46,10 +42,6 @@ export function diffDays(from: Date, to: Date): number {
   return Math.round((startOfDay(to).getTime() - startOfDay(from).getTime()) / MS_DAY);
 }
 
-export function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS_LONG = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -70,6 +62,10 @@ export function formatLongDay(d: Date): string {
 
 export function formatDayMonth(d: Date): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+}
+
+export function formatMonthYear(d: Date): string {
+  return `${MONTHS_LONG[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export function formatWeekday(d: Date): string {
@@ -93,10 +89,6 @@ export function greeting(now = new Date()): string {
   return 'Good evening';
 }
 
-export function plural(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? '' : 's'}`;
-}
-
 /** "2 days", "3 weeks", "5 months" — for ages. */
 export function humanGap(days: number): string {
   const abs = Math.abs(days);
@@ -115,11 +107,3 @@ export function humanGap(days: number): string {
   return `${years} year${years === 1 ? '' : 's'}`;
 }
 
-export function relativeToToday(days: number, dueWord = 'Due'): string {
-  const prefix = dueWord ? `${dueWord} ` : '';
-  if (days === 0) return `${prefix}today`;
-  if (days === 1) return `${prefix}tomorrow`;
-  if (days > 1) return `${prefix}in ${humanGap(days)}`;
-  if (days === -1) return '1 day late';
-  return `${Math.abs(days)} days late`;
-}

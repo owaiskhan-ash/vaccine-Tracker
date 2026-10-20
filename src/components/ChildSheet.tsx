@@ -148,7 +148,7 @@ export function ChildSheet({ open, onClose, childId, onSaved }: Props) {
           {existing ? 'Save changes' : 'Add child'}
         </button>
       </div>
-      <p className="sheet-foot">Stored only in this browser. Export a backup from settings any time.</p>
+      <p className="sheet-foot">Kept in this browser, on this phone. Each child has their own separate record.</p>
     </Sheet>
   );
 }

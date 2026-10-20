@@ -1,159 +1,11 @@
-import { DOSES, DOSE_BY_ID, STAGES, STAGE_BY_ID, graceDaysFor } from '../data/schedule';
+import { DOSES, STAGE_BY_ID } from '../data/schedule';
 import type { DoseDef, StageId } from '../data/schedule';
 import { addDays, addMonths, diffDays, parseISODate, startOfDay, toISODate } from './date';
-import type { ChildProfile, DoseRecord, DoseStatus, DoseView } from './types';
+import type { ChildProfile, EntryPrefill, EntryStatus, VaccineEntry } from './types';
 
-export function doseOffset(dose: DoseDef): number {
-  return dose.monthOffset ?? STAGE_BY_ID[dose.stage].monthOffset;
-}
-
-export function dueDateFor(profile: ChildProfile, dose: DoseDef): Date {
-  const dob = parseISODate(profile.dob);
-  const dayOffset = dose.monthOffset == null ? STAGE_BY_ID[dose.stage].dayOffset : undefined;
-  if (dayOffset != null) return startOfDay(addDays(dob, dayOffset));
-  return startOfDay(addMonths(dob, doseOffset(dose)));
-}
-
-export function windowEndFor(profile: ChildProfile, dose: DoseDef): Date {
-  return addDays(dueDateFor(profile, dose), graceDaysFor(dose.stage));
-}
-
-export function statusFor(
-  profile: ChildProfile,
-  dose: DoseDef,
-  record: DoseRecord | undefined,
-  now = new Date(),
-): DoseStatus {
-  if (record) return 'done';
-  const due = dueDateFor(profile, dose);
-  const end = windowEndFor(profile, dose);
-  const t = startOfDay(now).getTime();
-  if (t > startOfDay(end).getTime()) return 'overdue';
-  if (t >= due.getTime()) return 'due';
-  return 'upcoming';
-}
-
-export function buildDoseViews(
-  profile: ChildProfile,
-  records: Record<string, DoseRecord> | undefined,
-  now = new Date(),
-): DoseView[] {
-  return DOSES.map((dose) => {
-    const record = records?.[dose.id];
-    const due = dueDateFor(profile, dose);
-    const windowEnd = windowEndFor(profile, dose);
-    return {
-      key: `${profile.id}:${dose.id}`,
-      doseId: dose.id,
-      stage: dose.stage,
-      name: dose.name,
-      short: dose.short,
-      protects: dose.protects,
-      route: dose.route,
-      detail: dose.detail,
-      dueDate: due,
-      windowEnd,
-      status: statusFor(profile, dose, record, now),
-      record,
-      daysUntil: diffDays(now, due),
-    };
-  });
-}
-
-export type StageSummary = {
-  stage: StageId;
-  label: string;
-  short: string;
-  eyebrow: string;
-  note: string;
-  dueDate: Date;
-  total: number;
-  done: number;
-  overdue: number;
-  current: boolean;
-  complete: boolean;
-  doses: DoseView[];
-};
-
-const STAGE_ORDER = STAGES.map((s) => s.id);
-
-export function groupByStage(doses: DoseView[]): StageSummary[] {
-  const today = startOfDay(new Date());
-  return STAGES.map((stage) => {
-    const stageDoses = doses
-      .filter((d) => d.stage === stage.id)
-      .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-    const done = stageDoses.filter((d) => d.status === 'done').length;
-    const firstDue = stageDoses[0]?.dueDate ?? today;
-    const lastWindow = stageDoses.reduce(
-      (acc, d) => (d.windowEnd.getTime() > acc.getTime() ? d.windowEnd : acc),
-      firstDue,
-    );
-    return {
-      stage: stage.id,
-      label: stage.label,
-      short: stage.short,
-      eyebrow: stage.eyebrow,
-      note: stage.note,
-      dueDate: firstDue,
-      total: stageDoses.length,
-      done,
-      overdue: stageDoses.filter((d) => d.status === 'overdue').length,
-      current: today >= firstDue && today <= lastWindow,
-      complete: stageDoses.length > 0 && done === stageDoses.length,
-      doses: stageDoses,
-    };
-  }).filter((s) => s.total > 0).sort((a, b) => STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage));
-}
-
-export type Progress = {
-  total: number;
-  done: number;
-  overdue: number;
-  dueNow: number;
-  next?: DoseView;
-  nextStage?: StageSummary;
-  percent: number;
-};
-
-export function progressFor(doses: DoseView[]): Progress {
-  const total = doses.length;
-  const done = doses.filter((d) => d.status === 'done').length;
-  const overdue = doses.filter((d) => d.status === 'overdue').length;
-  const dueNow = doses.filter((d) => d.status === 'due').length;
-  const upcoming = doses
-    .filter((d) => d.status !== 'done')
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  const next = upcoming[0];
-  const stages = groupByStage(doses);
-  const nextStage = next ? stages.find((s) => s.stage === next.stage) : undefined;
-  return {
-    total,
-    done,
-    overdue,
-    dueNow,
-    next,
-    nextStage,
-    percent: total ? Math.round((done / total) * 100) : 0,
-  };
-}
-
-export function nextVisit(doses: DoseView[]): DoseView[] {
-  const pending = doses
-    .filter((d) => d.status !== 'done')
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  if (!pending.length) return [];
-  const first = pending[0];
-  const firstVisitDate = first.dueDate.getTime();
-  const firstStage = first.stage;
-  // everything overdue from earlier visits + everything sharing the next visit date
-  return pending.filter(
-    (d) =>
-      d.status === 'overdue' ||
-      (d.stage === firstStage && d.dueDate.getTime() === firstVisitDate) ||
-      d.dueDate.getTime() === firstVisitDate,
-  );
-}
+/* ------------------------------------------------------------------ *
+ * Ages
+ * ------------------------------------------------------------------ */
 
 export type AgeParts = { years: number; months: number; weeks: number; days: number; totalDays: number };
 
@@ -171,7 +23,13 @@ export function ageParts(dobISO: string, now = new Date()): AgeParts {
   if (years < 0) return { years: 0, months: 0, weeks: 0, days: 0, totalDays: Math.max(totalDays, 0) };
   const anchor = addMonths(dob, years * 12 + months);
   const days = Math.max(diffDays(anchor, today), 0);
-  return { years: Math.max(years, 0), months: Math.max(months, 0), weeks: Math.floor(days / 7), days, totalDays };
+  return {
+    years: Math.max(years, 0),
+    months: Math.max(months, 0),
+    weeks: Math.floor(days / 7),
+    days,
+    totalDays,
+  };
 }
 
 export function ageLabel(dobISO: string, now = new Date()): string {
@@ -190,58 +48,230 @@ export function ageLabel(dobISO: string, now = new Date()): string {
   return `${p.totalDays} day${p.totalDays === 1 ? '' : 's'}`;
 }
 
-export type ReminderPlanItem = { date: string; doses: DoseView[] };
+/* ------------------------------------------------------------------ *
+ * National schedule — used only for suggestions
+ * ------------------------------------------------------------------ */
+
+export function doseDueDate(dobISO: string, dose: DoseDef): Date {
+  const dob = parseISODate(dobISO);
+  const stage = STAGE_BY_ID[dose.stage];
+  if (dose.monthOffset != null) return startOfDay(addMonths(dob, dose.monthOffset));
+  if (stage.dayOffset != null) return startOfDay(addDays(dob, stage.dayOffset));
+  return startOfDay(addMonths(dob, stage.monthOffset));
+}
+
+function formatMonths(months: number): string {
+  if (months % 12 === 0) {
+    const years = months / 12;
+    return `${years} year${years === 1 ? '' : 's'}`;
+  }
+  if (months < 24) return `${months} months`;
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  return m ? `${y} yr ${m} mo` : `${y} years`;
+}
+
+/** "6 weeks", "9 months", "16 years" — the age the schedule recommends a dose. */
+export function recommendedLabel(dose: DoseDef): string {
+  if (dose.monthOffset != null) return formatMonths(dose.monthOffset);
+  return STAGE_BY_ID[dose.stage].label;
+}
+
+export function normalizeText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
 
 /**
- * Everything that should produce a reminder: doses due inside the lead window,
- * plus doses that have slipped past it. One reminder per visit date.
+ * Has this parent already recorded this schedule dose? Entries linked by id win;
+ * otherwise we compare the names so hand-typed records ("Penta 2") count too.
  */
-export function reminderPlan(doses: DoseView[], leadDays: number, now = new Date()): ReminderPlanItem[] {
-  const horizon = addDays(startOfDay(now), leadDays).getTime();
-  const buckets = new Map<string, DoseView[]>();
-  for (const dose of doses) {
-    if (dose.status === 'done') continue;
-    const withinWindow = dose.status === 'due' || dose.status === 'overdue';
-    const soon = dose.dueDate.getTime() <= horizon && dose.daysUntil >= -365;
-    if (!withinWindow && !soon) continue;
-    const key = toISODate(dose.dueDate);
-    const list = buckets.get(key) ?? [];
-    list.push(dose);
-    buckets.set(key, list);
+export function entryMatchesDose(entry: VaccineEntry, dose: DoseDef): boolean {
+  if (entry.sourceId === dose.id) return true;
+  const text = normalizeText(`${entry.name} ${entry.dose ?? ''}`);
+  if (!text) return false;
+  return [dose.name, dose.short].some((label) => {
+    const needle = normalizeText(label);
+    return needle.length > 1 && text.includes(needle);
+  });
+}
+
+/** Exact name match against the national list, so typing it yourself links the dose. */
+export function doseForName(name: string): DoseDef | undefined {
+  const needle = normalizeText(name);
+  if (!needle) return undefined;
+  return DOSES.find((dose) => normalizeText(dose.name) === needle || normalizeText(dose.short) === needle);
+}
+
+export type Suggestion = {
+  dose: DoseDef;
+  dueDate: Date;
+  /** dueDate − today, in days (negative means the age has passed) */
+  daysFromToday: number;
+  state: 'due' | 'ahead';
+};
+
+/**
+ * Every national-schedule dose that is not in this child's record, ordered by
+ * how close it sits to the child's current age — the next thing first, then the
+ * most recently passed age, then the rest.
+ */
+export function suggestionsFor(child: ChildProfile, entries: VaccineEntry[], now = new Date()): Suggestion[] {
+  const today = startOfDay(now);
+  return DOSES.filter((dose) => !entries.some((entry) => entryMatchesDose(entry, dose)))
+    .map<Suggestion>((dose) => {
+      const dueDate = doseDueDate(child.dob, dose);
+      const daysFromToday = diffDays(today, dueDate);
+      return { dose, dueDate, daysFromToday, state: daysFromToday <= 0 ? 'due' : 'ahead' };
+    })
+    .sort((a, b) => relevance(a.daysFromToday) - relevance(b.daysFromToday) || a.daysFromToday - b.daysFromToday);
+}
+
+function relevance(days: number): number {
+  // upcoming doses sit slightly ahead of overdue ones, and very old ones drift
+  // to the bottom so a five-year-old is not shown birth doses at the top.
+  return days >= 0 ? days + 30 : Math.min(-days, 120);
+}
+
+/** Open the entry sheet with this suggestion filled in, never auto-added. */
+export function suggestionPrefill(item: Suggestion, now = new Date()): EntryPrefill {
+  return {
+    name: item.dose.name,
+    sourceId: item.dose.id,
+    mode: 'planned',
+    date: item.daysFromToday < 0 ? toISODate(now) : toISODate(item.dueDate),
+  };
+}
+
+export function groupSuggestions(list: Suggestion[]): Array<{ stage: StageId; label: string; items: Suggestion[] }> {
+  const order: StageId[] = ['birth', 'w6', 'w10', 'w14', 'm9', 'm16', 'y2to5', 'y5', 'y10'];
+  const groups = new Map<StageId, Suggestion[]>();
+  for (const item of list) {
+    const list2 = groups.get(item.dose.stage) ?? [];
+    list2.push(item);
+    groups.set(item.dose.stage, list2);
   }
+  return order
+    .filter((stage) => groups.has(stage))
+    .map((stage) => ({
+      stage,
+      label: STAGE_BY_ID[stage].label,
+      items: (groups.get(stage) ?? []).sort((a, b) => a.daysFromToday - b.daysFromToday),
+    }));
+}
+
+/* ------------------------------------------------------------------ *
+ * The parent's own entries
+ * ------------------------------------------------------------------ */
+
+export function entryStatus(entry: VaccineEntry, now = new Date()): EntryStatus {
+  if (entry.givenOn) return 'given';
+  if (!entry.dueOn) return 'upcoming';
+  const days = diffDays(now, parseISODate(entry.dueOn));
+  if (days < 0) return 'overdue';
+  if (days === 0) return 'due';
+  return 'upcoming';
+}
+
+export function entryDays(entry: VaccineEntry, now = new Date()): number | null {
+  if (!entry.dueOn || entry.givenOn) return null;
+  return diffDays(now, parseISODate(entry.dueOn));
+}
+
+/** Planned entries first (soonest at the top), then given ones (newest first). */
+export function splitEntries(entries: VaccineEntry[]) {
+  const planned = entries
+    .filter((e) => !e.givenOn && e.dueOn)
+    .sort((a, b) => (a.dueOn ?? '').localeCompare(b.dueOn ?? ''));
+  const given = entries
+    .filter((e) => e.givenOn)
+    .sort((a, b) => (b.givenOn ?? '').localeCompare(a.givenOn ?? '') || b.createdAt.localeCompare(a.createdAt));
+  return { planned, given };
+}
+
+export function summarize(entries: VaccineEntry[], now = new Date()) {
+  const given = entries.filter((e) => Boolean(e.givenOn)).length;
+  const planned = entries.filter((e) => !e.givenOn).length;
+  const due = entries.filter((e) => {
+    const s = entryStatus(e, now);
+    return s === 'due' || s === 'overdue';
+  }).length;
+  return { total: entries.length, given, planned, due };
+}
+
+/* ------------------------------------------------------------------ *
+ * Reminders & calendar — only dates the parent has planned
+ * ------------------------------------------------------------------ */
+
+export type ReminderMoment = {
+  /** YYYY-MM-DD */
+  date: string;
+  titles: string[];
+};
+
+function momentLabel(entry: VaccineEntry): string {
+  return entry.dose ? `${entry.name} ${entry.dose}` : entry.name;
+}
+
+/**
+ * Dates worth nudging about: the parent's own planned entries, and nothing
+ * else. Suggested doses are never put on someone's calendar behind their back.
+ */
+export function reminderMoments(entries: VaccineEntry[], leadDays: number, now = new Date()): ReminderMoment[] {
+  const today = startOfDay(now);
+  const buckets = new Map<string, string[]>();
+
+  for (const entry of entries) {
+    if (entry.givenOn || !entry.dueOn) continue;
+    const days = diffDays(today, parseISODate(entry.dueOn));
+    if (days < -30 || days > leadDays) continue;
+    const titles = buckets.get(entry.dueOn) ?? [];
+    const label = momentLabel(entry);
+    if (!titles.includes(label)) titles.push(label);
+    buckets.set(entry.dueOn, titles);
+  }
+
   return [...buckets.entries()]
-    .map(([date, list]) => ({ date, doses: list }))
+    .map(([date, titles]) => ({ date, titles }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** The next few visits, whether or not a reminder is queued for them yet. */
-export function upcomingVisits(doses: DoseView[], limit = 4): ReminderPlanItem[] {
-  const today = startOfDay(new Date()).getTime();
-  const buckets = new Map<string, DoseView[]>();
-  for (const dose of doses) {
-    if (dose.status === 'done') continue;
-    if (dose.status !== 'overdue' && dose.windowEnd.getTime() < today) continue;
-    const key = toISODate(dose.dueDate);
-    const list = buckets.get(key) ?? [];
-    list.push(dose);
-    buckets.set(key, list);
+/** All planned dates, overdue ones included, for the reminders timeline. */
+export function plannedMoments(entries: VaccineEntry[]): ReminderMoment[] {
+  const buckets = new Map<string, string[]>();
+  for (const entry of entries) {
+    if (entry.givenOn || !entry.dueOn) continue;
+    const titles = buckets.get(entry.dueOn) ?? [];
+    const label = momentLabel(entry);
+    if (!titles.includes(label)) titles.push(label);
+    buckets.set(entry.dueOn, titles);
   }
   return [...buckets.entries()]
-    .map(([date, list]) => ({ date, doses: list }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, limit);
+    .map(([date, titles]) => ({ date, titles }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export function doseById(id: string): DoseDef | undefined {
-  return DOSE_BY_ID[id];
+/** Every planned date still ahead, for the calendar file. */
+export function calendarMoments(entries: VaccineEntry[], now = new Date()): ReminderMoment[] {
+  const today = startOfDay(now);
+  const buckets = new Map<string, string[]>();
+  for (const entry of entries) {
+    if (entry.givenOn || !entry.dueOn) continue;
+    if (parseISODate(entry.dueOn).getTime() < today.getTime()) continue;
+    const titles = buckets.get(entry.dueOn) ?? [];
+    const label = momentLabel(entry);
+    if (!titles.includes(label)) titles.push(label);
+    buckets.set(entry.dueOn, titles);
+  }
+  return [...buckets.entries()]
+    .map(([date, titles]) => ({ date, titles }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** Gentle, deterministic nudge unrelated to dosage. */
 export const CARE_TIPS = [
   'Hold your baby close during the injection. Skin-to-skin contact calms them faster.',
   'A mild fever or soreness for a day or two is common. Ask your health worker what to give.',
   'Bring the immunisation card, even if you are visiting a different centre.',
   'Feed your baby before the visit. It helps with comfort and with oral vaccines.',
-  'Write down the date and place in the app right after the visit — future you will thank you.',
+  'Write the date and place down right after the visit — future you will thank you.',
   'If a dose is missed, it is almost never too late. Go as soon as you can; do not restart the series.',
 ];

@@ -1,62 +1,82 @@
-import { useMemo, useState } from 'react';
-import { CARE_TIPS, ageLabel, groupByStage, progressFor } from '../lib/engine';
+import { useMemo } from 'react';
+import { CARE_TIPS, ageLabel, entryStatus, splitEntries, suggestionPrefill, suggestionsFor } from '../lib/engine';
 import { formatDay, formatDayMonth, formatLongDay, greeting, humanGap, parseISODate, toISODate } from '../lib/date';
-import { useApp, useDoses, useNow } from '../lib/store';
+import { useApp, useNow } from '../lib/store';
 import { ACCENTS } from '../lib/storage';
 import { useInstall } from '../lib/install';
-import { DoseRow, JourneyCard, VisitCard } from '../components/Bits';
-import { IconBell, IconChevron, IconClock, IconClose, IconSparkle } from '../components/Icon';
-import type { DoseView } from '../lib/types';
+import { EntryRow, SectionHead, SuggestionRow } from '../components/Bits';
+import { IconBell, IconChevron, IconClock, IconClose, IconPlus, IconSparkle } from '../components/Icon';
+import type { EntryPrefill } from '../lib/types';
 
 type Props = {
-  onOpenDose: (id: string) => void;
+  onAddEntry: () => void;
+  onOpenEntry: (id: string) => void;
+  onOpenSuggestions: () => void;
+  onPickSuggestion: (prefill: EntryPrefill) => void;
   onGoNudges: () => void;
   onGoSchedule: () => void;
   onOpenProfile: () => void;
 };
 
-export function TodayScreen({ onOpenDose, onGoNudges, onGoSchedule, onOpenProfile }: Props) {
-  const { state, child, setSettings, markDoseDone } = useApp();
-  const doses = useDoses();
+function weekdayLong(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(date);
+}
+
+export function TodayScreen({
+  onAddEntry,
+  onOpenEntry,
+  onOpenSuggestions,
+  onPickSuggestion,
+  onGoNudges,
+  onGoSchedule,
+  onOpenProfile,
+}: Props) {
+  const { state, child, entries, setSettings } = useApp();
   const install = useInstall();
-  const [loggedAll, setLoggedAll] = useState(0);
   const now = useNow(60_000);
   const todayKey = toISODate(now);
-  const stages = useMemo(() => groupByStage(doses), [doses, todayKey]);
-  const progress = useMemo(() => progressFor(doses), [doses, todayKey]);
 
-  if (!child || !progress) return null;
+  const suggestions = useMemo(
+    () => (child ? suggestionsFor(child, entries, new Date(`${todayKey}T12:00:00`)) : []),
+    [child, entries, todayKey],
+  );
+
+  if (!child) return null;
 
   const accent = ACCENTS[child.accent] ?? ACCENTS.sand;
   const initial = child.name.trim().slice(0, 1).toUpperCase() || 'B';
   const dob = parseISODate(child.dob);
-
-  const overdue = doses
-    .filter((d) => d.status === 'overdue')
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-
-  const pending = doses
-    .filter((d) => d.status !== 'done' && d.status !== 'overdue')
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  const next = pending[0];
-  const sameVisit: DoseView[] = next
-    ? doses
-        .filter((d) => d.status !== 'done' && d.dueDate.getTime() === next.dueDate.getTime())
-        .sort((a, b) => a.name.localeCompare(b.name))
-    : [];
-
-  const tip = CARE_TIPS[Math.floor(parseISODate(child.dob).getDate() % CARE_TIPS.length)];
-  const allDone = progress.done === progress.total;
+  const { planned, given } = splitEntries(entries);
+  const overdue = planned.filter((entry) => entryStatus(entry, now) === 'overdue');
+  const ahead = planned.filter((entry) => entryStatus(entry, now) !== 'overdue');
+  const next = ahead[0];
+  const sameDay = next ? ahead.filter((entry) => entry.dueOn === next.dueOn) : [];
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const nextDays = next?.dueOn
+    ? Math.round((parseISODate(next.dueOn).getTime() - todayStart.getTime()) / 86_400_000)
+    : 0;
+  const late = entries.filter((entry) => entryStatus(entry, now) === 'overdue').length;
+  const percent = entries.length ? Math.round((given.length / entries.length) * 100) : 0;
+  const tip = CARE_TIPS[Math.abs(dob.getDate()) % CARE_TIPS.length];
   const remindersOff = !state.settings.reminders;
 
   return (
-    <main className="screen today" style={{ ['--accent' as string]: accent.tint, ['--accent-deep' as string]: accent.ring, ['--accent-soft' as string]: accent.soft }}>
+    <main
+      className="screen today"
+      style={{
+        ['--accent' as string]: accent.tint,
+        ['--accent-deep' as string]: accent.ring,
+        ['--accent-soft' as string]: accent.soft,
+      }}
+    >
       <header className="topline">
         <div className="brand">
-          <span className="brand-mark" aria-hidden="true">VR</span>
+          <span className="brand-mark" aria-hidden="true">
+            VR
+          </span>
           <span className="brand-word">Vaccine Routine</span>
         </div>
-        <button className="avatar" onClick={onOpenProfile} aria-label="Baby profile">
+        <button className="avatar" onClick={onOpenProfile} aria-label={`${child.name}'s profile`}>
           <span style={{ color: accent.tint }}>{initial}</span>
         </button>
       </header>
@@ -71,93 +91,158 @@ export function TodayScreen({ onOpenDose, onGoNudges, onGoSchedule, onOpenProfil
         </h1>
         <p className="hello-meta">
           <span>{ageLabel(child.dob, now)}</span>
-          <span className="sep" aria-hidden="true">·</span>
+          <span className="sep" aria-hidden="true">
+            ·
+          </span>
           <span className="muted">born {formatDay(dob)}</span>
         </p>
       </section>
 
-      <JourneyCard
-        stages={stages}
-        done={progress.done}
-        total={progress.total}
-        percent={progress.percent}
-        started={formatDayMonth(dob)}
-        next={
-          allDone ? (
-            'Complete'
-          ) : progress.next ? (
-            <span className="next-inline">
-              {formatDayMonth(progress.next.dueDate)}
-              <span className={`next-gap${progress.next.status === 'overdue' ? ' late' : ''}`}>
-                {progress.next.status === 'overdue'
-                  ? 'overdue'
-                  : progress.next.daysUntil === 0
-                    ? 'today'
-                    : progress.next.daysUntil > 0
-                      ? humanGap(progress.next.daysUntil)
-                      : 'now'}
-              </span>
+      {entries.length === 0 ? (
+        <section className="record card blank" aria-label="Empty record">
+          <span className="blank-seal" aria-hidden="true">
+            <IconPlus size={20} />
+          </span>
+          <h2 className="serif">A blank page.</h2>
+          <p>
+            Nothing is pre-filled for {child.name}. Add the first vaccination yourself — or start from what
+            India’s national schedule suggests.
+          </p>
+          <div className="record-actions">
+            <button className="btn primary sm" onClick={onAddEntry}>
+              <IconPlus size={16} /> Add a vaccination
+            </button>
+            <button className="btn ghost sm" onClick={onOpenSuggestions}>
+              {suggestions.length} suggestion{suggestions.length === 1 ? '' : 's'}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="record card" aria-label={`${child.name}'s record`}>
+          <header className="record-head">
+            <span className="eyebrow">{child.name}’s record</span>
+            <span className={`pill${given.length ? ' done' : ''}`}>
+              <span className="dot" /> {given.length} given
             </span>
-          ) : (
-            '—'
-          )
-        }
-      />
+          </header>
+          <div className="record-stats">
+            <div>
+              <span className="record-num num">{given.length}</span>
+              <span className="record-lbl">Given</span>
+            </div>
+            <div>
+              <span className="record-num num">{planned.length}</span>
+              <span className="record-lbl">Planned</span>
+            </div>
+            <div>
+              <span className={`record-num num${late ? ' late' : ''}`}>{late}</span>
+              <span className="record-lbl">Late</span>
+            </div>
+          </div>
+          <div className="bar" aria-hidden="true">
+            <span style={{ width: `${Math.max(percent, entries.length ? 1.5 : 0)}%` }} />
+          </div>
+          <p className="record-foot">
+            Every line here was entered by you. {suggestions.length > 0 ? `${suggestions.length} national-schedule doses are still unrecorded.` : 'The national list is fully covered.'}
+          </p>
+          <div className="record-actions">
+            <button className="btn primary sm" onClick={onAddEntry}>
+              <IconPlus size={16} /> Add a vaccination
+            </button>
+            <button className="btn ghost sm" onClick={onGoSchedule}>
+              Full record
+            </button>
+          </div>
+        </section>
+      )}
 
-      {overdue.length > 0 ? (
-        <VisitCard
-          tone="late"
-          date={formatDay(overdue[0].dueDate)}
-          weekday={new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(overdue[0].dueDate)}
-          label={
+      {overdue.length ? (
+        <section className="visit card late">
+          <header className="visit-head">
+            <div>
+              <span className="eyebrow">Past its date</span>
+              <div className="visit-date">
+                <span className="serif">{formatDay(parseISODate(overdue[0].dueOn ?? todayKey))}</span>
+                <span className="weekday">{weekdayLong(parseISODate(overdue[0].dueOn ?? todayKey))}</span>
+              </div>
+            </div>
             <span className="flag late">
-              <IconClock size={14} /> {Math.abs(overdue[0].daysUntil)}d late
+              <IconClock size={14} /> {overdue.length} waiting
             </span>
-          }
-          doses={overdue}
-          onOpenDose={onOpenDose}
-        />
+          </header>
+          <div className="visit-list">
+            {overdue.map((entry, i) => (
+              <EntryRow key={entry.id} entry={entry} divider={i > 0} onOpen={() => onOpenEntry(entry.id)} />
+            ))}
+          </div>
+          <p className="visit-foot">Tap one to record it, move the date, or remove it.</p>
+        </section>
       ) : null}
 
-      {allDone && overdue.length === 0 ? (
-        <section className="complete-card card">
-          <span className="complete-badge">
-            <IconSparkle size={20} />
+      {next ? (
+        <section className="visit card">
+          <header className="visit-head">
+            <div>
+              <span className="eyebrow">Next planned</span>
+              <div className="visit-date">
+                <span className="serif">{formatDay(parseISODate(next.dueOn ?? todayKey))}</span>
+                <span className="weekday">{weekdayLong(parseISODate(next.dueOn ?? todayKey))}</span>
+              </div>
+            </div>
+            <span className="flag now">
+              {entryStatus(next, now) === 'due' ? 'Due today' : `In ${humanGap(Math.max(nextDays, 1))}`}
+            </span>
+          </header>
+          <div className="visit-list">
+            {sameDay.map((entry, i) => (
+              <EntryRow key={entry.id} entry={entry} divider={i > 0} onOpen={() => onOpenEntry(entry.id)} />
+            ))}
+          </div>
+          <p className="visit-foot">You planned this date. Tap an entry to change it or mark it given.</p>
+        </section>
+      ) : entries.length > 0 ? (
+        <section className="settle card">
+          <span className="settle-icon" aria-hidden="true">
+            <IconSparkle size={17} />
           </span>
-          <h2 className="serif">Everything is up to date.</h2>
-          <p>Every scheduled dose on this phone has been recorded. New doses will appear as the schedule grows.</p>
-          <button className="btn ghost wide sm" onClick={onGoSchedule}>
-            See the full schedule
+          <div>
+            <strong>Nothing planned ahead.</strong>
+            <span>Add the date of the next visit whenever you know it.</span>
+          </div>
+          <button className="link-btn" onClick={onAddEntry}>
+            Add <IconChevron size={13} />
           </button>
         </section>
-      ) : sameVisit.length ? (
-        <VisitCard
-          date={formatLongDay(next.dueDate).split(' ').slice(0, 2).join(' ')}
-          weekday={new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(next.dueDate)}
-          label={
-            <span className={`flag${next.status === 'due' ? ' now' : ''}`}>
-              {next.status === 'due'
-                ? next.daysUntil < 0
-                  ? 'Due now'
-                  : 'Due today'
-                : next.daysUntil <= 1
-                  ? 'Tomorrow'
-                  : `In ${humanGap(next.daysUntil)}`}
-            </span>
-          }
-          doses={sameVisit}
-          onOpenDose={onOpenDose}
-          onLogAll={() => {
-            sameVisit.forEach((d) => markDoseDone(d.doseId));
-            setLoggedAll(sameVisit.length);
-          }}
-        />
       ) : null}
 
-      {loggedAll ? (
-        <p className="logged-all">
-          <IconSparkle size={14} /> {loggedAll} doses logged for today. Well done, both of you.
-        </p>
+      {suggestions.length ? (
+        <section className="suggest card" aria-label="Suggested by India's national schedule">
+          <header className="suggest-head">
+            <div>
+              <span className="eyebrow">Suggested next · India NIS</span>
+              <h2 className="serif">What the national schedule would suggest</h2>
+            </div>
+            <button className="link-btn sug-all" onClick={onOpenSuggestions}>
+              All {suggestions.length} <IconChevron size={13} />
+            </button>
+          </header>
+          <p className="suggest-lede">
+            Only doses that are not already in {child.name}’s record. Nothing is added until you add it.
+          </p>
+          <div className="sug-list">
+            {suggestions.slice(0, 3).map((suggestion) => (
+              <SuggestionRow
+                key={suggestion.dose.id}
+                suggestion={suggestion}
+                onPick={() => onPickSuggestion(suggestionPrefill(suggestion))}
+              />
+            ))}
+          </div>
+          <p className="suggest-foot">
+            Guidance only — your health worker decides what is due. Dates are counted from {child.name}’s
+            birth on {formatDayMonth(dob)}.
+          </p>
+        </section>
       ) : null}
 
       {remindersOff ? (
@@ -167,32 +252,19 @@ export function TodayScreen({ onOpenDose, onGoNudges, onGoSchedule, onOpenProfil
           </span>
           <span className="nudge-copy">
             <strong>Turn on gentle reminders</strong>
-            <span>A quiet nudge before each visit. Nothing leaves the phone.</span>
+            <span>A quiet nudge before each date you plan. Nothing leaves the phone.</span>
           </span>
           <IconChevron size={16} />
         </button>
       ) : null}
 
-      {pending.length > 1 ? (
-        <section className="later">
-          <div className="between">
-            <span className="eyebrow">Later on</span>
-            <button className="link-btn" onClick={onGoSchedule}>
-              Full schedule <IconChevron size={13} />
-            </button>
-          </div>
-          <div className="later-list">
-            {pending
-              .filter(
-                (d) =>
-                  d.status !== 'overdue' &&
-                  !sameVisit.some((s) => s.key === d.key) &&
-                  !overdue.some((o) => o.key === d.key),
-              )
-              .slice(0, 3)
-              .map((dose) => (
-                <DoseRow key={dose.key} dose={dose} onOpen={() => onOpenDose(dose.doseId)} />
-              ))}
+      {given.length ? (
+        <section className="recent">
+          <SectionHead label="Recently given" action="Full record" onAction={onGoSchedule} />
+          <div className="entries card">
+            {given.slice(0, 3).map((entry, i) => (
+              <EntryRow key={entry.id} entry={entry} divider={i > 0} onOpen={() => onOpenEntry(entry.id)} />
+            ))}
           </div>
         </section>
       ) : null}

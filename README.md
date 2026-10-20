@@ -1,8 +1,11 @@
 # Vaccine Routine
 
-A calm, offline-first vaccine tracker and reminder for babies — built on India's
-**National Immunization Schedule (UIP)**. No accounts, no server, no analytics.
-Every name, date and dose lives in the browser on the phone.
+A calm, offline-first vaccine log and reminder for babies — built for India.
+There is no pre-loaded schedule: every vaccination is entered by hand, with its
+own name, date and note. India's **National Immunization Schedule** is there as a
+suggestion, and only ever for doses the child's record does not already contain.
+
+No accounts, no server, no analytics. Everything lives in this browser on this phone.
 
 <img src="public/icons/icon-512.png" width="88" align="right" alt="Vaccine Routine icon" />
 
@@ -17,48 +20,75 @@ npm run preview  # serve the production build
 
 ## What it does
 
-**Today** — one screen that answers "what now?". The baby's name and age, a
-hand-drawn route across the nine visits (birth → 10+ years), how many doses are
-done, the next visit with its doses, anything that has slipped past its window,
-and the three doses coming after that.
+**Today** — the record at a glance: how many entries are given, planned or late,
+the next planned date, anything that has slipped past it, the last few entries,
+and a compact **Suggested next** widget drawn from India's national schedule.
 
-**Schedule** — the complete national schedule, grouped by visit, with filters for
-what is still to go and what has been recorded. Every dose explains what it
-protects against, how it is given, and when its window closes.
+**Record** — every vaccination entered for the active child, grouped by month and
+filterable by planned or given. Add, edit or delete from here.
 
-**Reminders** — one nudge before each visit and one on the day, at a time you
-choose. A calendar export (`.ics`) hands the visit dates to the phone's own
-calendar so reminders fire even when the app is closed.
+**Suggestions** — the full national list, grouped by the age it is recommended
+(birth to 16 years), with dates worked out from the child's date of birth. Doses
+already in the record are not shown. Tapping one opens the entry sheet prefilled;
+nothing is saved until the parent presses **Add to record**.
 
-**You** — baby profile, accent colour, and multiple children.
+**Reminders** — a gentle nudge before and on each date the parent has planned, at
+a time they choose, plus an `.ics` file for the phone's own calendar.
+
+**You** — one profile per child, each with a separate record, an accent colour, a
+readout of what is stored on the phone, and a way to erase it.
 
 | | | |
 |---|---|---|
-| ![Schedule](screenshots/schedule.jpg) | ![Reminders](screenshots/reminders.jpg) | ![You](screenshots/you.jpg) |
+| ![Record](screenshots/schedule.jpg) | ![Reminders](screenshots/reminders.jpg) | ![You](screenshots/you.jpg) |
 
-The app opens empty: the parent adds their baby's name and date of birth, and every
-dose is logged by hand. Nothing is pre-filled and nothing leaves the phone.
+![Suggestions](screenshots/suggestions.jpg)
 
-## Offline & privacy
+## Custom entries, not a fixed schedule
 
-- A service worker precaches the app shell, fonts and icons on first load, so it
-  opens with no signal — verified with the browser in offline mode.
-- State is written to `localStorage` on every change, with a second copy so a
-  corrupt write can't wipe a family's record.
-- The app starts empty — every name and date is entered by the parent, and nothing
-  is ever uploaded. No network calls at runtime.
+- The app opens with an empty record — no demo baby, no pre-filled doses, no
+  sample data of any kind.
+- Each entry is either **already given** (date, optional place) or **planned**
+  (date). A name is free text; a datalist offers the national names for speed.
+- If the typed name matches a national dose, the entry is linked to it, so that
+  dose disappears from the suggestions. Renaming the entry away from the dose
+  releases the link again.
+- Suggestions match both linked entries and hand-typed ones ("Penta 2",
+  "Hepatitis B birth dose"), so the parent is never asked about something they
+  have already written down.
+- Adding a child never copies another child's entries: records are kept per child.
+
+![Adding an entry](screenshots/entry.jpg)
+
+## Offline, local, and careful with data
+
+- State lives in `localStorage['vaccine-routine:state:v2']`, with a second slot
+  (`:v2:backup`) holding the previous copy, written on every change.
+- On first load an older install's `:v1` data is migrated: each stored per-dose
+  record becomes a dated entry with its national name, and the old key is
+  removed. Leftover demo children (`sample-…`) are dropped.
+- An empty primary slot is respected. Deleting the last child is never undone by
+  the spare copy on reload.
+- Every child, name, date and note is validated on read and write; malformed
+  entries are discarded rather than guessed at.
+- **Erase all data** removes both slots and the reminder bookkeeping, then the
+  app returns to onboarding — verified across a reload.
+- No network calls at runtime. A service worker precaches the shell, fonts and
+  icons on first load, so the app opens with no signal.
 - `navigator.storage.persist()` is requested so the browser is less likely to
-  evict the data under storage pressure.
+  evict the record under storage pressure.
 
-## Schedule notes
+## The national list
 
-- Built on the MoHFW National Immunization Schedule, including the third fIPV
-  dose added on 1 January 2023 and the nationwide PCV rollout.
-- Due dates are calculated from the date of birth with calendar-month maths
-  (a baby born on the 31st gets a 28/29/30-day clamp rather than rolling over).
-  A dose is called late only once its recommended window has closed, so a normal
-  few days' delay is never framed as a failure.
-- The app is a personal record, not medical advice.
+- Birth: BCG, OPV-0, hepatitis B birth dose. 6, 10 and 14 weeks: pentavalent,
+  OPV, rotavirus, fIPV, PCV. 9 months: MR 1, fIPV 3, PCV booster, vitamin A.
+  16–24 months: MR 2, DPT booster 1, OPV booster, vitamin A. Then vitamin A every
+  six months to five years, DPT booster 2 at 5–6, and Td at 10 and 16 — 34 doses
+  across nine age groups.
+- Includes the third fIPV dose added to the schedule in 2023 and the nationwide
+  PCV rollout completed in 2021.
+- These are **suggestions**, never a prescription. Timing differs between
+  children and states; the health worker who sees the child decides.
 
 ## Design
 
@@ -71,12 +101,14 @@ rendering `scripts/icon.html` and capturing the PNGs in `public/icons/`.
 
 ```
 src/
-  data/schedule.ts      vaccine definitions + windows
-  lib/engine.ts         due dates, status, progress, reminder plan
-  lib/storage.ts        local persistence with a spare copy
+  data/schedule.ts      national catalogue — used only for suggestions
+  lib/types.ts          child and entry model
+  lib/engine.ts         ages, entry status, suggestion matching, reminder dates
+  lib/storage.ts        v2 persistence, validation, v1 migration, spare copy
+  lib/store.tsx         state and actions
   lib/reminders.ts      permission, scheduling, catch-up nudges
   lib/calendar.ts       .ics export with VALARMs
-  components/           tab bar, sheets, rows, route line
-  screens/              Today, Schedule, Reminders, Settings, Onboarding
+  components/           tab bar, sheets, entry rows, suggestion rows
+  screens/              Today, Record, Reminders, Settings, Onboarding
   sw.ts                 precache service worker
 ```

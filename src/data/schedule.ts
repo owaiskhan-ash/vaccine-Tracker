@@ -1,18 +1,17 @@
 /**
- * Vaccine definitions for India's National Immunization Schedule (UIP).
+ * The suggestion catalogue — India's National Immunization Schedule (UIP).
+ *
+ * Nothing here is ever added to a child's record automatically. These doses are
+ * only *offered* as suggestions, and only while they are missing from what the
+ * parent has entered. Doses are matched to entries by id or by name, so a
+ * parent who types "Penta 2" themselves is never nagged about it again.
  *
  * Source: Ministry of Health & Family Welfare, National Immunization Schedule,
- * including the fIPV third dose introduced on 1 January 2023 and the nationwide
- * PCV rollout completed in 2021.
- *
- * Due dates are calculated from the baby's date of birth. A dose is considered
- * "due" from its recommended age and "overdue" only once the recommended window
- * has closed, so parents aren't alarmed by a normal few days' delay.
+ * including the fIPV third dose added on 1 January 2023 and the nationwide PCV
+ * rollout completed in 2021.
  */
 
 export type StageId = 'birth' | 'w6' | 'w10' | 'w14' | 'm9' | 'm16' | 'y2to5' | 'y5' | 'y10';
-
-export type DoseId = string;
 
 export type Stage = {
   id: StageId;
@@ -21,111 +20,31 @@ export type Stage = {
   monthOffset: number;
   /** exact age in days, used for the week-based visits */
   dayOffset?: number;
-  /** absolute end of the recommended age window, in months */
-  windowEndMonth: number;
   eyebrow: string;
-  note: string;
 };
 
 export type DoseDef = {
-  id: DoseId;
+  id: string;
   name: string;
   short: string;
   stage: StageId;
   protects: string;
   route: string;
   detail: string;
-  /** for stage-less timing (Vitamin A series uses these) */
+  /** overrides the stage's age, e.g. the later Vitamin A and Td doses */
   monthOffset?: number;
-  tag?: string;
 };
 
 export const STAGES: Stage[] = [
-  {
-    id: 'birth',
-    label: 'At birth',
-    short: 'Birth',
-    monthOffset: 0,
-    dayOffset: 0,
-    windowEndMonth: 0.5,
-    eyebrow: 'Day 0',
-    note: 'Before you leave the hospital.',
-  },
-  {
-    id: 'w6',
-    label: '6 weeks',
-    short: '6 wks',
-    monthOffset: 1.5,
-    dayOffset: 42,
-    windowEndMonth: 2.5,
-    eyebrow: 'First visit',
-    note: 'The first big round of protection.',
-  },
-  {
-    id: 'w10',
-    label: '10 weeks',
-    short: '10 wks',
-    monthOffset: 2.5,
-    dayOffset: 70,
-    windowEndMonth: 3.5,
-    eyebrow: 'Second visit',
-    note: 'A shorter visit than the last one.',
-  },
-  {
-    id: 'w14',
-    label: '14 weeks',
-    short: '14 wks',
-    monthOffset: 3.5,
-    dayOffset: 98,
-    windowEndMonth: 4.5,
-    eyebrow: 'Third visit',
-    note: 'Completes the primary doses.',
-  },
-  {
-    id: 'm9',
-    label: '9 months',
-    short: '9 mths',
-    monthOffset: 9,
-    windowEndMonth: 12,
-    eyebrow: 'Half birthday',
-    note: 'Can be given until the first birthday.',
-  },
-  {
-    id: 'm16',
-    label: '16–24 months',
-    short: '16 mths',
-    monthOffset: 16,
-    windowEndMonth: 24,
-    eyebrow: 'Toddler visit',
-    note: 'A wide window — any time between 16 and 24 months.',
-  },
-  {
-    id: 'y2to5',
-    label: '2–5 years',
-    short: '2–5 yrs',
-    monthOffset: 24,
-    windowEndMonth: 60,
-    eyebrow: 'Vitamin A series',
-    note: 'Vitamin A, every six months until age five.',
-  },
-  {
-    id: 'y5',
-    label: '5–6 years',
-    short: '5 yrs',
-    monthOffset: 60,
-    windowEndMonth: 72,
-    eyebrow: 'Before school',
-    note: 'One last booster before school.',
-  },
-  {
-    id: 'y10',
-    label: '10 & 16 years',
-    short: '10+ yrs',
-    monthOffset: 120,
-    windowEndMonth: 204,
-    eyebrow: 'Later childhood',
-    note: 'Tetanus and diphtheria boosters.',
-  },
+  { id: 'birth', label: 'At birth', short: 'Birth', monthOffset: 0, dayOffset: 0, eyebrow: 'Day 0' },
+  { id: 'w6', label: '6 weeks', short: '6 wks', monthOffset: 1.5, dayOffset: 42, eyebrow: 'First visit' },
+  { id: 'w10', label: '10 weeks', short: '10 wks', monthOffset: 2.5, dayOffset: 70, eyebrow: 'Second visit' },
+  { id: 'w14', label: '14 weeks', short: '14 wks', monthOffset: 3.5, dayOffset: 98, eyebrow: 'Third visit' },
+  { id: 'm9', label: '9 months', short: '9 mths', monthOffset: 9, eyebrow: 'Half birthday' },
+  { id: 'm16', label: '16–24 months', short: '16 mths', monthOffset: 16, eyebrow: 'Toddler visit' },
+  { id: 'y2to5', label: '2–5 years', short: '2–5 yrs', monthOffset: 24, eyebrow: 'Vitamin A series' },
+  { id: 'y5', label: '5–6 years', short: '5 yrs', monthOffset: 60, eyebrow: 'Before school' },
+  { id: 'y10', label: '10 & 16 years', short: '10+ yrs', monthOffset: 120, eyebrow: 'Later childhood' },
 ];
 
 export const STAGE_BY_ID = Object.fromEntries(STAGES.map((s) => [s.id, s])) as Record<StageId, Stage>;
@@ -204,7 +123,7 @@ export const DOSES: DoseDef[] = [
     stage: 'w6',
     protects: 'Pneumonia and meningitis',
     route: 'Injection · thigh',
-    detail: 'The pneumococcal conjugate vaccine is now part of the national programme across India.',
+    detail: 'The pneumococcal conjugate vaccine is part of the national programme across India.',
   },
 
   // 10 weeks
@@ -253,7 +172,7 @@ export const DOSES: DoseDef[] = [
     stage: 'w14',
     protects: 'Polio',
     route: 'Oral drops',
-    detail: 'Two drops by mouth. A booster comes at 16–24 months.',
+    detail: 'Two drops by mouth. A booster follows at 16–24 months.',
   },
   {
     id: 'rota3',
@@ -320,6 +239,7 @@ export const DOSES: DoseDef[] = [
     route: 'Oral syrup',
     detail: 'The first of nine Vitamin A doses, given every six months until age five.',
   },
+
   // 16–24 months
   {
     id: 'mr2',
@@ -357,6 +277,7 @@ export const DOSES: DoseDef[] = [
     route: 'Oral syrup',
     detail: 'The second Vitamin A dose. Further doses continue every six months until age five.',
   },
+
   // 2–5 years: Vitamin A series
   ...([3, 4, 5, 6, 7, 8, 9] as const).map<DoseDef>((n, i) => ({
     id: `vita${n}`,
@@ -403,35 +324,8 @@ export const DOSES: DoseDef[] = [
   },
 ];
 
-export const DOSE_BY_ID: Record<DoseId, DoseDef> = Object.fromEntries(DOSES.map((d) => [d.id, d]));
+export const DOSE_BY_ID: Record<string, DoseDef> = Object.fromEntries(DOSES.map((d) => [d.id, d]));
 
-/**
- * How long after the recommended age a dose can be given before the app
- * politely calls it late. Primary visits are tight; the 9- and 16-month visits
- * have the wide windows the national schedule gives them.
- */
-export function graceDaysFor(stage: StageId): number {
-  switch (stage) {
-    case 'birth':
-      return 14;
-    case 'w6':
-    case 'w10':
-    case 'w14':
-      return 28;
-    case 'm9':
-      return 92; // the first birthday
-    case 'm16':
-      return 244; // the second birthday
-    case 'y2to5':
-      return 60;
-    case 'y5':
-      return 365;
-    case 'y10':
-      return 365;
-    default:
-      return 30;
-  }
-}
+export const SCHEDULE_SOURCE = 'India · NIS schedule';
 
-export const SCHEDULE_SOURCE =
-  'India · National Immunization Schedule (UIP)';
+export const DOSE_NAMES = DOSES.map((d) => d.name);
