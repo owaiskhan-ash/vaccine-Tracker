@@ -58,13 +58,17 @@ jobs:
           unzip -l "$APK" | grep -E 'assets/public/index.html|classes.dex|resources.arsc'
           BUILD_TOOLS=$(ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/* | tail -1)
           "$BUILD_TOOLS/apksigner" verify --print-certs "$APK"
+          sha256sum "$APK" > "$APK.sha256"
+          cat "$APK.sha256"
 
       - name: Attach the APK to the release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" out/Vaccine-Routine-1.0.apk \
+          gh release create "${GITHUB_REF_NAME}" \
+            out/Vaccine-Routine-1.0.apk \
+            out/Vaccine-Routine-1.0.apk.sha256 \
             --title "Vaccine Routine ${GITHUB_REF_NAME#v}" \
             --notes-file .github/release-notes-1.0.md
 
