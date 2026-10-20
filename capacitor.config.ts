@@ -6,6 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   android: {
     backgroundColor: '#100F0E',
+    adjustMarginsForEdgeToEdge: 'auto',
   },
 };
 

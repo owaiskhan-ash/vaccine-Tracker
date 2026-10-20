@@ -85,9 +85,8 @@ function Shell() {
     };
   }, [go]);
 
-  // keep scheduled nudges in sync with any change
+  // keep scheduled nudges in sync with any change, including switching them off
   useEffect(() => {
-    if (!state.settings.reminders) return;
     void syncReminders(state);
     const onVisible = () => {
       if (document.visibilityState === 'visible') void syncReminders(state);

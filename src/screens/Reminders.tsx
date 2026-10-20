@@ -240,7 +240,7 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
         ) : null}
       </section>
 
-      {future.length ? (
+      {future.length && !isNativeApp() ? (
         <button
           className="cal-row"
           onClick={() => {
