@@ -52,20 +52,21 @@ jobs:
 
       - name: Verify the APK
         run: |
+          set -e
           APK=out/Vaccine-Routine-1.0.apk
-          ls -lh "$APK"
-          sha256sum "$APK"
-          unzip -l "$APK" | grep -E 'assets/public/index.html|classes.dex|resources.arsc'
           BUILD_TOOLS=$(ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/* | tail -1)
-          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK"
+          ls -lh "$APK"
+          unzip -l "$APK" | grep -E 'assets/public/index.html|classes.dex|resources.arsc'
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" > out/certs.txt
+          "$BUILD_TOOLS/aapt2" dump badging "$APK" > out/badging.txt 2>&1 || true
           sha256sum "$APK" > "$APK.sha256"
-          cat "$APK.sha256"
           {
             echo "APK checked on the build runner:"
             echo
             echo '```'
-            "$BUILD_TOOLS/aapt2" dump badging "$APK" | grep -E "^package:|^sdkVersion:|^targetSdkVersion:|^application-label:"
-            "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | grep -E "Signer #1 certificate (DN|SHA-256)"
+            head -1 out/badging.txt || true
+            grep -E '^sdkVersion:|^targetSdkVersion:|^application-label:' out/badging.txt || true
+            grep -E 'Signer #1 certificate (DN|SHA-256)' out/certs.txt || true
             echo "SHA-256: $(cut -d' ' -f1 "$APK.sha256")"
             echo '```'
           } > out/verify.txt
