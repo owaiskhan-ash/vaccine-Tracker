@@ -4,6 +4,8 @@ A calm, offline-first vaccine tracker and reminder for babies — built on India
 **National Immunization Schedule (UIP)**. No accounts, no server, no analytics.
 Every name, date and dose lives in the browser on the phone.
 
+<img src="public/icons/icon-512.png" width="88" align="right" alt="Vaccine Routine icon" />
+
 ```
 npm install
 npm run dev      # http://localhost:5173

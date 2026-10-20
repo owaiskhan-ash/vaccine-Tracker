@@ -1543,7 +1543,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 26px;
+  gap: 18px;
   min-height: 100dvh;
   padding: max(calc(env(safe-area-inset-top) + 22px), 34px) 24px calc(env(safe-area-inset-bottom) + 24px);
   overflow: hidden;
@@ -1569,8 +1569,8 @@
 }
 
 .onboard-title {
-  margin-top: 30px;
-  font-size: clamp(46px, 13.6vw, 58px);
+  margin-top: 22px;
+  font-size: clamp(40px, 12.2vw, 54px);
   line-height: 0.96;
 }
 
@@ -1579,16 +1579,16 @@
 }
 
 .onboard-lede {
-  margin-top: 16px;
+  margin-top: 12px;
   max-width: 32ch;
   font-family: var(--font-plain);
-  font-size: 12.5px;
-  line-height: 1.65;
+  font-size: 12px;
+  line-height: 1.6;
   color: var(--text-3);
 }
 
 .onboard-art {
-  margin-top: 26px;
+  margin-top: 18px;
   padding: 14px 16px 12px;
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -1600,7 +1600,7 @@
 .onboard-svg {
   display: block;
   width: 100%;
-  height: 62px;
+  height: 54px;
   overflow: visible;
 }
 
@@ -1640,9 +1640,24 @@
 }
 
 .onboard-cta {
-  margin-top: 24px;
+  margin-top: 20px;
   height: 54px;
   font-size: 15px;
+}
+
+.restore-link {
+  display: block;
+  width: 100%;
+  margin-top: 9px;
+  text-align: center;
+  font-family: var(--font-plain);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  color: var(--text-4);
+}
+
+.restore-link:hover {
+  color: var(--text-2);
 }
 
 .sample-link {
@@ -1666,8 +1681,21 @@
   color: var(--bad);
 }
 
-.onboard-form .privacy-line {
-  margin-top: 18px;
+.onboard-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-family: var(--font-plain);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--text-4);
+}
+
+.onboard-privacy svg {
+  flex: none;
+  opacity: 0.8;
 }
 
 /* ---------- sheets ---------- */

@@ -106,6 +106,8 @@ type AppContextValue = {
   setSettings: (patch: Partial<Settings>) => void;
   dismiss: (key: string) => void;
   importState: (state: AppState) => void;
+  /** alias used by onboarding, where there is no child yet */
+  importStore: (state: AppState) => void;
   resetAll: () => void;
   samples: AppState | null;
   seedSample: () => void;
@@ -176,6 +178,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSettings: (patch) => dispatch({ type: 'settings', patch }),
       dismiss: (key) => dispatch({ type: 'dismiss', key }),
       importState: (next) => dispatch({ type: 'import', state: next }),
+      importStore: (next) => dispatch({ type: 'import', state: next }),
       resetAll: () => {
         clearState();
         dispatch({ type: 'reset' });
@@ -201,10 +204,11 @@ export function useApp(): AppContextValue {
 /** Doses for the active child, recalculated when anything relevant changes. */
 export function useDoses() {
   const { state, child } = useApp();
+  const today = toISODate(useNow(60_000));
   return useMemo(() => {
     if (!child) return [];
     return buildDoseViews(child, state.records[child.id]);
-  }, [child, state.records]);
+  }, [child, state.records, today]);
 }
 
 /** A ticking clock so "today" stays fresh without a reload. */
