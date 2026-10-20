@@ -57,7 +57,7 @@ jobs:
           BUILD_TOOLS=$(ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/* | tail -1)
           ls -lh "$APK"
           unzip -l "$APK" | grep -E 'assets/public/index.html|classes.dex|resources.arsc'
-          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" > out/certs.txt
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" > out/certs.txt 2>&1
           "$BUILD_TOOLS/aapt2" dump badging "$APK" > out/badging.txt 2>&1 || true
           sha256sum "$APK" > "$APK.sha256"
           {
@@ -65,7 +65,7 @@ jobs:
             echo
             echo '```'
             head -1 out/badging.txt || true
-            grep -E '^sdkVersion:|^targetSdkVersion:|^application-label:' out/badging.txt || true
+            grep -E '^sdkVersion:|^minSdkVersion:|^targetSdkVersion:|^application-label:' out/badging.txt || true
             grep -E 'Signer #1 certificate (DN|SHA-256)' out/certs.txt || true
             echo "SHA-256: $(cut -d' ' -f1 "$APK.sha256")"
             echo '```'
