@@ -1,0 +1,92 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - "arena/2eef0e9c-vaccine-tracker"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: Build 1.0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the web app
+        run: npm run build
+
+      - name: Sync into the Android project
+        run: npx cap sync android
+
+      - name: Build the release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Collect the APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/Vaccine-Routine-1.0.apk
+          ls -lh out
+
+      - name: Verify the APK
+        run: |
+          set -e
+          APK=out/Vaccine-Routine-1.0.apk
+          BUILD_TOOLS=$(ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/* | tail -1)
+          ls -lh "$APK"
+          unzip -l "$APK" | grep -E 'assets/public/index.html|classes.dex|resources.arsc'
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" > out/certs.txt 2>&1
+          "$BUILD_TOOLS/aapt2" dump badging "$APK" > out/badging.txt 2>&1 || true
+          sha256sum "$APK" > "$APK.sha256"
+          {
+            echo "APK checked on the build runner:"
+            echo
+            echo '```'
+            head -1 out/badging.txt || true
+            grep -E '^sdkVersion:|^minSdkVersion:|^targetSdkVersion:|^application-label:' out/badging.txt || true
+            grep -E 'Signer #1 certificate (DN|SHA-256)' out/certs.txt || true
+            echo "SHA-256: $(cut -d' ' -f1 "$APK.sha256")"
+            echo '```'
+          } > out/verify.txt
+          cat out/verify.txt
+
+      - name: Attach the APK to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            out/Vaccine-Routine-1.0.apk \
+            out/Vaccine-Routine-1.0.apk.sha256 \
+            --title "Vaccine Routine ${GITHUB_REF_NAME#v}" \
+            --notes-file .github/release-notes-1.0.md
+          gh release edit "${GITHUB_REF_NAME}" \
+            --notes "$(cat .github/release-notes-1.0.md; printf '\n\n'; cat out/verify.txt)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vaccine-routine-apk
+          path: out/Vaccine-Routine-1.0.apk
+          if-no-files-found: error
