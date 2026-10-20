@@ -15,7 +15,7 @@ type Props = {
   onPickSuggestion: (prefill: EntryPrefill) => void;
   onGoNudges: () => void;
   onGoSchedule: () => void;
-  onOpenProfile: () => void;
+  onSwitchChild: () => void;
 };
 
 function weekdayLong(date: Date): string {
@@ -29,7 +29,7 @@ export function TodayScreen({
   onPickSuggestion,
   onGoNudges,
   onGoSchedule,
-  onOpenProfile,
+  onSwitchChild,
 }: Props) {
   const { state, child, entries, setSettings } = useApp();
   const install = useInstall();
@@ -76,8 +76,16 @@ export function TodayScreen({
           </span>
           <span className="brand-word">Vaccine Routine</span>
         </div>
-        <button className="avatar" onClick={onOpenProfile} aria-label={`${child.name}'s profile`}>
-          <span style={{ color: accent.tint }}>{initial}</span>
+        <button
+          className="child-chip"
+          onClick={onSwitchChild}
+          aria-label={`Switch child. Currently ${child.name}.`}
+        >
+          <span className="child-chip-avatar" style={{ color: accent.tint }} aria-hidden="true">
+            {initial}
+          </span>
+          <span className="child-chip-name">{child.name}</span>
+          <IconChevron size={13} />
         </button>
       </header>
 
@@ -105,7 +113,7 @@ export function TodayScreen({
           </span>
           <h2 className="serif">A blank page.</h2>
           <p>
-            Nothing is pre-filled for {child.name}. Add the first vaccination yourself — or start from what
+            Nothing is pre-filled for {child.name}. Add the first vaccination yourself, or start from what
             India’s national schedule suggests.
           </p>
           <div className="record-actions">
@@ -239,7 +247,7 @@ export function TodayScreen({
             ))}
           </div>
           <p className="suggest-foot">
-            Guidance only — your health worker decides what is due. Dates are counted from {child.name}’s
+            Guidance only. Your health worker decides what is due. Dates are counted from {child.name}’s
             birth on {formatDayMonth(dob)}.
           </p>
         </section>
@@ -280,8 +288,8 @@ export function TodayScreen({
               {install.isIOS
                 ? 'Share → Add to Home Screen for full-screen, offline access.'
                 : install.canInstall
-                  ? 'Install for full-screen access — works with no signal.'
-                  : 'Add to your home screen — works with no signal.'}
+                  ? 'Install for full-screen access. Works with no signal.'
+                  : 'Add to your home screen. Works with no signal.'}
             </span>
           </div>
           {install.canInstall ? (

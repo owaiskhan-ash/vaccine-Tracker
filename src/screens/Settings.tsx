@@ -107,7 +107,11 @@ export function SettingsScreen({
                       {ageLabel(c.dob)} · {entries} {entries === 1 ? 'entry' : 'entries'}
                     </span>
                   </span>
-                  {c.id === child.id ? <span className="kid-now">Tracking</span> : null}
+                  {c.id === child.id ? (
+                    <span className="kid-now">Tracking</span>
+                  ) : (
+                    <span className="kid-switch">Switch</span>
+                  )}
                 </button>
                 <button
                   className="icon-btn kid-edit"

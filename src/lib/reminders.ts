@@ -76,7 +76,7 @@ export function upcomingReminders(state: AppState, now = new Date()) {
 
 function bodyFor(state: AppState, moment: { date: string; titles: string[] }): string {
   const child = activeChild(state);
-  return `${child?.name ?? 'Baby'} — ${moment.titles.join(' · ')} on ${formatDay(parseISODate(moment.date))}.`;
+  return `${child?.name ?? 'Baby'}: ${moment.titles.join(' · ')} on ${formatDay(parseISODate(moment.date))}.`;
 }
 
 /* ---- remembering what has already been shown, so nothing repeats ---- */
@@ -130,8 +130,8 @@ export function clearScheduled(): void {
 }
 
 /**
- * Schedules the next few reminders while the app is alive, and — because a web
- * app cannot run a background alarm — shows a catch-up nudge when the app is
+ * Schedules the next few reminders while the app is alive. Because a web app
+ * cannot run a background alarm, it also shows a catch-up nudge when the app is
  * opened after a planned date has arrived.
  */
 export async function syncReminders(state: AppState, now = new Date()): Promise<void> {
@@ -183,7 +183,7 @@ export async function syncReminders(state: AppState, now = new Date()): Promise<
       const titles = late.flatMap((m) => m.titles).slice(0, 3).join(' · ');
       void showNotification(
         late.length === 1 ? 'One vaccination is waiting' : 'Vaccinations are waiting',
-        `${child.name} — ${titles}. Open the app to catch up.`,
+        `${child.name}: ${titles}. Open the app to catch up.`,
         `vr-late-${todayKey}`,
       );
     }

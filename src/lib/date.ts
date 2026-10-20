@@ -89,7 +89,7 @@ export function greeting(now = new Date()): string {
   return 'Good evening';
 }
 
-/** "2 days", "3 weeks", "5 months" — for ages. */
+/** "2 days", "3 weeks", "5 months", for ages. */
 export function humanGap(days: number): string {
   const abs = Math.abs(days);
   if (abs === 0) return 'today';

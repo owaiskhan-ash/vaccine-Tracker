@@ -8,6 +8,7 @@ import { SettingsScreen } from './screens/Settings';
 import { EntrySheet } from './components/EntrySheet';
 import { SuggestSheet } from './components/SuggestSheet';
 import { ChildSheet } from './components/ChildSheet';
+import { ChildSwitcher } from './components/ChildSwitcher';
 import { TabBar, type TabKey } from './components/TabBar';
 import { syncReminders } from './lib/reminders';
 import { IconCheck } from './components/Icon';
@@ -34,6 +35,7 @@ function Shell() {
   const [tab, setTab] = useState<TabKey>(readTab);
   const [entrySheet, setEntrySheet] = useState<EntrySheetState>(CLOSED_ENTRY);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [switchOpen, setSwitchOpen] = useState(false);
   const [childSheet, setChildSheet] = useState<{ open: boolean; id: string | null }>({
     open: false,
     id: null,
@@ -114,7 +116,7 @@ function Shell() {
           onPickSuggestion={openPrefilled}
           onGoNudges={() => go('nudges')}
           onGoSchedule={() => go('schedule')}
-          onOpenProfile={() => setChildSheet({ open: true, id: child.id })}
+          onSwitchChild={() => setSwitchOpen(true)}
         />
       ) : null}
       {tab === 'schedule' ? (
@@ -143,10 +145,13 @@ function Shell() {
         onToast={showToast}
       />
 
-      <SuggestSheet
-        open={suggestOpen}
-        onClose={() => setSuggestOpen(false)}
-        onPick={openPrefilled}
+      <SuggestSheet open={suggestOpen} onClose={() => setSuggestOpen(false)} onPick={openPrefilled} />
+
+      <ChildSwitcher
+        open={switchOpen}
+        onClose={() => setSwitchOpen(false)}
+        onAddChild={() => setChildSheet({ open: true, id: null })}
+        onToast={showToast}
       />
 
       <ChildSheet

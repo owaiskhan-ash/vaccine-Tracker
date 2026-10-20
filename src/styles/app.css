@@ -1,5 +1,5 @@
 /* ============================================================
-   Vaccine Routine — screens
+   Vaccine Routine screens
    ============================================================ */
 
 /* ---------- brand ---------- */
@@ -52,21 +52,50 @@
   gap: 12px;
 }
 
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 38px;
+.child-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   height: 38px;
-  border-radius: 50%;
+  padding: 0 9px 0 4px;
+  border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: rgba(255, 250, 240, 0.035);
-  font-family: var(--serif);
-  font-size: 19px;
-  transition: transform 0.2s var(--ease), background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
+  flex: none;
 }
 
-.avatar:active {
-  transform: scale(0.94);
+.child-chip:active {
+  background: rgba(255, 250, 240, 0.075);
+}
+
+.child-chip-avatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 250, 240, 0.055);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.child-chip-name {
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-plain);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.child-chip > svg {
+  color: var(--text-4);
+  flex: none;
+  transform: rotate(90deg);
 }
 
 /* ---------- today / hello ---------- */
@@ -1443,6 +1472,18 @@
   color: var(--accent);
 }
 
+.kid-switch {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-family: var(--font-plain);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-4);
+}
+
 .kid-edit {
   width: 32px;
   height: 32px;
@@ -1586,6 +1627,99 @@
   margin-top: 22px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
+}
+
+/* ---------- child switcher ---------- */
+
+.switch-list {
+  margin-top: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: rgba(255, 250, 240, 0.018);
+  overflow: hidden;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  text-align: left;
+  transition: background 0.2s;
+}
+
+.switch-row + .switch-row {
+  border-top: 1px solid var(--line);
+}
+
+.switch-row.active {
+  background: rgba(224, 198, 138, 0.05);
+}
+
+.switch-row:active {
+  background: rgba(255, 250, 240, 0.055);
+}
+
+.switch-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: rgba(255, 250, 240, 0.03);
+  font-family: var(--serif);
+  font-size: 20px;
+  flex: none;
+}
+
+.switch-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.switch-name {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.switch-meta {
+  font-family: var(--font-plain);
+  font-size: 10.5px;
+  color: var(--text-4);
+}
+
+.switch-now {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-family: var(--font-plain);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.switch-go {
+  flex: none;
+  font-family: var(--font-plain);
+  font-size: 11px;
+  color: var(--text-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.switch-add {
+  margin-top: 14px;
 }
 
 /* ---------- onboarding ---------- */
@@ -2178,6 +2312,12 @@
 }
 
 /* ---------- small screens ---------- */
+
+@media (max-width: 340px) {
+  .brand-word {
+    display: none;
+  }
+}
 
 @media (max-width: 360px) {
   .screen {

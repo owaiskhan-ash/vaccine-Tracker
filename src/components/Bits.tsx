@@ -39,7 +39,7 @@ export function EntryRow({
   const meta =
     status === 'given'
       ? entry.place ?? entry.note ?? 'Recorded'
-      : entry.note ?? entry.place ?? 'Planned — tap to change';
+      : entry.note ?? entry.place ?? 'Planned · tap to change';
 
   return (
     <button className={`entry-row${divider ? ' divided' : ''}`} onClick={onOpen}>

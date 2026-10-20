@@ -49,7 +49,7 @@ export function ageLabel(dobISO: string, now = new Date()): string {
 }
 
 /* ------------------------------------------------------------------ *
- * National schedule — used only for suggestions
+ * National schedule, used only for suggestions
  * ------------------------------------------------------------------ */
 
 export function doseDueDate(dobISO: string, dose: DoseDef): Date {
@@ -71,7 +71,7 @@ function formatMonths(months: number): string {
   return m ? `${y} yr ${m} mo` : `${y} years`;
 }
 
-/** "6 weeks", "9 months", "16 years" — the age the schedule recommends a dose. */
+/** "6 weeks", "9 months", "16 years": the age the schedule recommends a dose. */
 export function recommendedLabel(dose: DoseDef): string {
   if (dose.monthOffset != null) return formatMonths(dose.monthOffset);
   return STAGE_BY_ID[dose.stage].label;
@@ -112,7 +112,7 @@ export type Suggestion = {
 
 /**
  * Every national-schedule dose that is not in this child's record, ordered by
- * how close it sits to the child's current age — the next thing first, then the
+ * how close it sits to the child's current age: the next thing first, then the
  * most recently passed age, then the rest.
  */
 export function suggestionsFor(child: ChildProfile, entries: VaccineEntry[], now = new Date()): Suggestion[] {
@@ -199,7 +199,7 @@ export function summarize(entries: VaccineEntry[], now = new Date()) {
 }
 
 /* ------------------------------------------------------------------ *
- * Reminders & calendar — only dates the parent has planned
+ * Reminders & calendar: only dates the parent has planned
  * ------------------------------------------------------------------ */
 
 export type ReminderMoment = {
@@ -272,6 +272,6 @@ export const CARE_TIPS = [
   'A mild fever or soreness for a day or two is common. Ask your health worker what to give.',
   'Bring the immunisation card, even if you are visiting a different centre.',
   'Feed your baby before the visit. It helps with comfort and with oral vaccines.',
-  'Write the date and place down right after the visit — future you will thank you.',
+  'Write the date and place down right after the visit. Future you will thank you.',
   'If a dose is missed, it is almost never too late. Go as soon as you can; do not restart the series.',
 ];

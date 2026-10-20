@@ -160,7 +160,7 @@ export function ScheduleScreen({
           </span>
           <h2 className="serif">A record waiting for its first line.</h2>
           <p>
-            There is nothing saved for {child.name} yet. Add what you know — and the national schedule can
+            There is nothing saved for {child.name} yet. Add what you know, and the national schedule can
             suggest what usually comes next.
           </p>
           <div className="empty-actions">

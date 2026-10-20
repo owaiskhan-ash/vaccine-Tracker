@@ -21,7 +21,7 @@ export function Onboarding() {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('A name, a nickname — whatever you call them.');
+      setError('A name, a nickname, whatever you call them.');
       return;
     }
     if (!dob) {
@@ -59,7 +59,7 @@ export function Onboarding() {
           in its <em>place.</em>
         </h1>
         <p className="onboard-lede">
-          A calm, private record of your child’s vaccinations. You add every entry yourself — and India’s
+          A calm, private record of your child’s vaccinations. You add every entry yourself, and India’s
           national schedule is there to suggest what comes next.
         </p>
 

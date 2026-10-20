@@ -73,7 +73,7 @@ export function EntrySheet({ open, entryId, prefill, onClose, onToast }: Props) 
   function save() {
     const trimmed = name.trim();
     if (!trimmed) {
-      setError('Give the vaccination a name — “BCG”, “Flu shot”, whatever it was called.');
+      setError('Give the vaccination a name: “BCG”, “Flu shot”, whatever it was called.');
       return;
     }
     if (!date) {

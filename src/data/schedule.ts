@@ -1,5 +1,5 @@
 /**
- * The suggestion catalogue — India's National Immunization Schedule (UIP).
+ * The suggestion catalogue: India's National Immunization Schedule (UIP).
  *
  * Nothing here is ever added to a child's record automatically. These doses are
  * only *offered* as suggestions, and only while they are missing from what the
@@ -76,7 +76,7 @@ export const DOSES: DoseDef[] = [
     stage: 'birth',
     protects: 'Polio',
     route: 'Oral drops',
-    detail: 'Two drops by mouth — the zero dose of the polio series.',
+    detail: 'Two drops by mouth: the zero dose of the polio series.',
   },
 
   // 6 weeks

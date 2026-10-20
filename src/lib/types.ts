@@ -14,7 +14,7 @@ export type ChildProfile = {
 };
 
 /**
- * A parent's own record. Everything here is typed in by them — the app ships
+ * A parent's own record. Everything here is typed in by them; the app ships
  * with no vaccines pre-filled. A dose is either already given (`givenOn`) or
  * planned for a date (`dueOn`).
  */
@@ -23,9 +23,9 @@ export type VaccineEntry = {
   name: string;
   /** optional label, e.g. "Dose 2" or a batch number */
   dose?: string;
-  /** YYYY-MM-DD — set when the vaccine has been given */
+  /** YYYY-MM-DD. Set when the vaccine has been given. */
   givenOn?: string;
-  /** YYYY-MM-DD — set when it is planned */
+  /** YYYY-MM-DD. Set when it is planned. */
   dueOn?: string;
   place?: string;
   note?: string;

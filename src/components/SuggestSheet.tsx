@@ -44,8 +44,8 @@ export function SuggestSheet({ open, onClose, onPick }: Props) {
       }
     >
       <p className="sheet-lede">
-        Only doses that are <em>not</em> in {child.name}’s record yet. Tap one to add it yourself —{' '}
-        <strong>nothing is filled in automatically.</strong>
+        Only doses that are <em>not</em> in {child.name}’s record yet. Tap one to add it yourself.{' '}
+        <strong>Nothing is filled in automatically.</strong>
       </p>
 
       <div className="sug-meter">
@@ -107,8 +107,8 @@ export function SuggestSheet({ open, onClose, onPick }: Props) {
 
       <p className="sheet-foot">
         Suggested dates are worked out from {child.name}’s date of birth. This is guidance from India’s
-        National Immunization Schedule (Ministry of Health &amp; Family Welfare), not a prescription —
-        your health worker decides what is due.
+        National Immunization Schedule (Ministry of Health &amp; Family Welfare), not a prescription.
+        Your health worker decides what is due.
       </p>
     </Sheet>
   );

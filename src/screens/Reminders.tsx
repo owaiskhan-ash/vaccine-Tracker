@@ -108,8 +108,8 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
                 ? nextLabel
                   ? `Next nudge ${nextLabel} · ${formatTime(state.settings.time)}`
                   : planned.length
-                    ? `On at ${formatTime(state.settings.time)} — the next planned date is further out`
-                    : `On at ${formatTime(state.settings.time)} — add a planned date to hear one`
+                    ? `On at ${formatTime(state.settings.time)}. The next planned date is further out`
+                    : `On at ${formatTime(state.settings.time)}. Add a planned date to hear one`
                 : 'Currently switched off'}
             </span>
           </div>
@@ -166,7 +166,7 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
               <button className="btn ghost sm wide" onClick={() => void test()} disabled={busy}>
                 {tested ? (
                   <>
-                    <IconCheck size={15} /> Sent — check your screen
+                    <IconCheck size={15} /> Sent. Check your screen
                   </>
                 ) : (
                   'Send a test reminder'
@@ -179,7 +179,7 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
         {permission === 'denied' && tried ? (
           <p className="rem-warn">
             Notifications are blocked for this site. You can re-enable them in your browser’s site
-            settings — every planned date still shows inside the app.
+            settings. Every planned date still shows inside the app.
           </p>
         ) : permission === 'default' && on ? (
           <p className="rem-warn">One more step: allow notifications above so the nudge can reach you.</p>
@@ -252,7 +252,7 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
             </strong>
             <span>
               {added
-                ? 'Open the downloaded file to finish — reminders then arrive even when this app is closed.'
+                ? 'Open the downloaded file to finish. Reminders then arrive even when this app is closed.'
                 : 'Downloads a calendar file made on this phone, with a reminder the day before.'}
             </span>
           </span>
@@ -263,7 +263,7 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
         <IconInfo size={16} />
         <p>
           This app has no server and no account. Reminders are scheduled by your phone, so they arrive
-          while the app is open — and a catch-up nudge greets you the next time you open it. Add the app
+          while the app is open, and a catch-up nudge greets you the next time you open it. Add the app
           to your home screen to keep it one tap away.
         </p>
       </div>
