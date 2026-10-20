@@ -3,7 +3,7 @@
  *
  * Source: Ministry of Health & Family Welfare, National Immunization Schedule,
  * including the fIPV third dose introduced on 1 January 2023 and the nationwide
- * PCV rollout completed in 2021. JE is offered in endemic districts only.
+ * PCV rollout completed in 2021.
  *
  * Due dates are calculated from the baby's date of birth. A dose is considered
  * "due" from its recommended age and "overdue" only once the recommended window
@@ -35,8 +35,6 @@ export type DoseDef = {
   protects: string;
   route: string;
   detail: string;
-  /** only shown when the parent turns on JE in settings */
-  optional?: boolean;
   /** for stage-less timing (Vitamin A series uses these) */
   monthOffset?: number;
   tag?: string;
@@ -322,17 +320,6 @@ export const DOSES: DoseDef[] = [
     route: 'Oral syrup',
     detail: 'The first of nine Vitamin A doses, given every six months until age five.',
   },
-  {
-    id: 'je1',
-    name: 'JE 1',
-    short: 'JE 1',
-    stage: 'm9',
-    protects: 'Japanese encephalitis',
-    route: 'Injection',
-    detail: 'Given only in districts where Japanese encephalitis is endemic. Ask your health worker if it applies to you.',
-    optional: true,
-  },
-
   // 16–24 months
   {
     id: 'mr2',
@@ -370,17 +357,6 @@ export const DOSES: DoseDef[] = [
     route: 'Oral syrup',
     detail: 'The second Vitamin A dose. Further doses continue every six months until age five.',
   },
-  {
-    id: 'je2',
-    name: 'JE 2',
-    short: 'JE 2',
-    stage: 'm16',
-    protects: 'Japanese encephalitis',
-    route: 'Injection',
-    detail: 'The second JE dose, only in endemic districts.',
-    optional: true,
-  },
-
   // 2–5 years: Vitamin A series
   ...([3, 4, 5, 6, 7, 8, 9] as const).map<DoseDef>((n, i) => ({
     id: `vita${n}`,
@@ -459,6 +435,3 @@ export function graceDaysFor(stage: StageId): number {
 
 export const SCHEDULE_SOURCE =
   'India · National Immunization Schedule (UIP)';
-
-export const SCHEDULE_NOTE =
-  'Built on India’s Universal Immunization Programme schedule, including the fIPV third dose added in 2023. JE is offered in endemic districts only. This app is a personal tracker, not medical advice — always confirm timings with your paediatrician or health worker.';

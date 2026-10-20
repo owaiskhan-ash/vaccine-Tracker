@@ -8,8 +8,6 @@ export type ChildProfile = {
   sex: Sex;
   /** accent used for this child across the app */
   accent: AccentKey;
-  /** Japanese Encephalitis doses are only offered in endemic districts */
-  jeEnabled: boolean;
   /** optional: shown in the child card if set */
   bornAt?: string;
   notes?: string;
@@ -57,7 +55,6 @@ export type DoseView = {
   protects: string;
   route: string;
   detail: string;
-  optional: boolean;
   dueDate: Date;
   windowEnd: Date;
   status: DoseStatus;

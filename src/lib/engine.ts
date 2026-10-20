@@ -33,16 +33,12 @@ export function statusFor(
   return 'upcoming';
 }
 
-export function isOptionalVisible(profile: ChildProfile, dose: DoseDef): boolean {
-  return !dose.optional || profile.jeEnabled;
-}
-
 export function buildDoseViews(
   profile: ChildProfile,
   records: Record<string, DoseRecord> | undefined,
   now = new Date(),
 ): DoseView[] {
-  return DOSES.filter((d) => isOptionalVisible(profile, d)).map((dose) => {
+  return DOSES.map((dose) => {
     const record = records?.[dose.id];
     const due = dueDateFor(profile, dose);
     const windowEnd = windowEndFor(profile, dose);
@@ -55,7 +51,6 @@ export function buildDoseViews(
       protects: dose.protects,
       route: dose.route,
       detail: dose.detail,
-      optional: Boolean(dose.optional),
       dueDate: due,
       windowEnd,
       status: statusFor(profile, dose, record, now),

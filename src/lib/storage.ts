@@ -2,7 +2,6 @@ import type { AccentKey, AppState, ChildProfile, Settings } from './types';
 
 const KEY = 'vaccine-routine:state:v1';
 const BACKUP_KEY = 'vaccine-routine:state:v1:backup';
-const NOTIFIED_KEY = 'vaccine-routine:notified';
 
 export const ACCENTS: Record<AccentKey, { label: string; tint: string; ring: string; soft: string }> = {
   sand: { label: 'Sand', tint: '#D9C3A5', ring: '#8C7457', soft: '#2A241C' },
@@ -44,7 +43,11 @@ export function normalizeState(raw: unknown): AppState {
   const base = emptyState();
   if (!raw || typeof raw !== 'object') return base;
   const data = raw as Partial<AppState>;
-  const children = Array.isArray(data.children) ? data.children.filter(isChild) : [];
+  // The early demo baby lived under an id starting with "sample-".
+  // Never let it linger on a real phone.
+  const children = Array.isArray(data.children)
+    ? data.children.filter(isChild).filter((c) => !c.id.startsWith('sample-'))
+    : [];
   const records: AppState['records'] = {};
   if (data.records && typeof data.records === 'object') {
     for (const [childId, doseMap] of Object.entries(data.records)) {
@@ -102,50 +105,12 @@ export function saveState(state: AppState): void {
   }
 }
 
-export function hasStoredState(): boolean {
-  try {
-    return localStorage.getItem(KEY) !== null;
-  } catch {
-    return false;
-  }
-}
-
 export function clearState(): void {
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem(BACKUP_KEY);
-    localStorage.removeItem(NOTIFIED_KEY);
-  } catch {
-    /* noop */
-  }
-}
-
-export function exportState(state: AppState): string {
-  return JSON.stringify({ app: 'vaccine-routine', exportedAt: new Date().toISOString(), state }, null, 2);
-}
-
-export function importState(text: string): AppState {
-  const parsed = JSON.parse(text) as unknown;
-  const candidate =
-    parsed && typeof parsed === 'object' && 'state' in parsed
-      ? (parsed as { state: unknown }).state
-      : parsed;
-  const state = normalizeState(candidate);
-  if (!state.children.length) throw new Error('No children found in this backup.');
-  return state;
-}
-
-export function wasNotifiedToday(dateKey: string): boolean {
-  try {
-    return localStorage.getItem(NOTIFIED_KEY) === dateKey;
-  } catch {
-    return false;
-  }
-}
-
-export function markNotifiedToday(dateKey: string): void {
-  try {
-    localStorage.setItem(NOTIFIED_KEY, dateKey);
+    localStorage.removeItem('vaccine-routine:notified');
+    localStorage.removeItem('vaccine-routine:sent');
   } catch {
     /* noop */
   }

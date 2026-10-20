@@ -60,9 +60,7 @@ export function DoseSheet({ doseId, onClose, onToast }: Props) {
       onClose={onClose}
       title={
         <div>
-          <p className="eyebrow">
-            {stage.label} · {dose.optional ? 'Optional in your district' : 'National schedule'}
-          </p>
+          <p className="eyebrow">{stage.label} · National schedule</p>
           <h2>{dose.name}</h2>
         </div>
       }

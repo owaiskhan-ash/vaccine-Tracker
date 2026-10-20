@@ -5,12 +5,11 @@ import { useApp, useDoses, useNow } from '../lib/store';
 import { toISODate } from '../lib/date';
 import { ACCENTS } from '../lib/storage';
 import { DoseRow, StageRow } from '../components/Bits';
-import { IconInfo } from '../components/Icon';
 
 type Filter = 'all' | 'due' | 'done';
 
 export function ScheduleScreen({ onOpenDose }: { onOpenDose: (id: string) => void }) {
-  const { child, state } = useApp();
+  const { child } = useApp();
   const doses = useDoses();
   const [filter, setFilter] = useState<Filter>('all');
   const todayKey = toISODate(useNow(60_000));
@@ -19,7 +18,6 @@ export function ScheduleScreen({ onOpenDose }: { onOpenDose: (id: string) => voi
 
   if (!child || !progress) return null;
   const accent = ACCENTS[child.accent] ?? ACCENTS.sand;
-  const jeHidden = !child.jeEnabled;
 
   const filtered = doses
     .filter((d) => {
@@ -124,19 +122,9 @@ export function ScheduleScreen({ onOpenDose }: { onOpenDose: (id: string) => voi
         </div>
       )}
 
-      {jeHidden ? (
-        <div className="note-card">
-          <IconInfo size={16} />
-          <p>
-            Japanese encephalitis doses are hidden. They are only given in endemic districts — you can
-            switch them on in <button className="link-btn inline" onClick={() => window.dispatchEvent(new CustomEvent('vr:open-settings'))}>settings</button>.
-          </p>
-        </div>
-      ) : null}
-
       <p className="source">
         Source: National Immunization Schedule, Ministry of Health &amp; Family Welfare, Government of
-        India. {state.children.length > 1 ? 'Each child is tracked separately.' : ''}
+        India.
       </p>
     </main>
   );

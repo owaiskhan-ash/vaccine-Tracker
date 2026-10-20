@@ -38,10 +38,7 @@ export function DoseRow({
     <button className={`dose-row${divider ? ' divided' : ''}`} onClick={onOpen}>
       <Monogram dose={dose} status={dose.status} />
       <span className="dose-main">
-        <span className="dose-name">
-          {dose.name}
-          {dose.optional ? <span className="opt"> · optional</span> : null}
-        </span>
+        <span className="dose-name">{dose.name}</span>
         <span className="dose-meta">{dose.route}</span>
       </span>
       <span className="dose-side">

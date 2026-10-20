@@ -1,13 +1,12 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '../lib/store';
-import { ACCENT_KEYS, ACCENTS, importState } from '../lib/storage';
+import { ACCENT_KEYS, ACCENTS } from '../lib/storage';
 import { addDays, parseISODate, toISODate } from '../lib/date';
 import type { ChildProfile } from '../lib/types';
 import { IconChevron, IconShield } from '../components/Icon';
 
 export function Onboarding() {
-  const { addChild, seedSample, state, importStore } = useApp();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const { addChild, state } = useApp();
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
   const [accent, setAccent] = useState<ChildProfile['accent']>(
@@ -43,7 +42,6 @@ export function Onboarding() {
       dob,
       sex: 'unspecified',
       accent,
-      jeEnabled: false,
     });
   }
 
@@ -89,7 +87,7 @@ export function Onboarding() {
           <span className="label">Baby’s name</span>
           <input
             className="input"
-            placeholder="Aarav, Zoya, or a nickname"
+            placeholder="Your baby’s name"
             value={name}
             autoComplete="off"
             autoCapitalize="words"
@@ -139,30 +137,6 @@ export function Onboarding() {
         <button className="btn primary wide onboard-cta" type="submit">
           Start the routine <IconChevron size={16} />
         </button>
-
-        <button type="button" className="sample-link" onClick={seedSample}>
-          Just looking? Open a sample baby
-        </button>
-
-        <button type="button" className="restore-link" onClick={() => fileRef.current?.click()}>
-          Restoring a backup? Import it here
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          className="sr"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (!file) return;
-            try {
-              importStore(importState(await file.text()));
-            } catch {
-              setError('That backup file could not be read.');
-            }
-          }}
-        />
 
         <p className="onboard-privacy">
           <IconShield size={13} /> Stored on this phone only. Works without a signal.

@@ -8,14 +8,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { DOSES } from '../data/schedule';
 import { buildDoseViews } from './engine';
-import { addDays, toISODate } from './date';
+import { toISODate } from './date';
 import {
   clearState,
   emptyState,
   loadState,
-  normalizeState,
   requestPersistentStorage,
   saveState,
 } from './storage';
@@ -30,7 +28,6 @@ type Action =
   | { type: 'undo'; childId: string; doseId: string }
   | { type: 'settings'; patch: Partial<Settings> }
   | { type: 'dismiss'; key: string }
-  | { type: 'import'; state: AppState }
   | { type: 'reset' };
 
 function markDone(state: AppState, childId: string, doseId: string, record: DoseRecord): AppState {
@@ -80,8 +77,6 @@ function reducer(state: AppState, action: Action): AppState {
       return state.dismissed.includes(action.key)
         ? state
         : { ...state, dismissed: [...state.dismissed, action.key] };
-    case 'import':
-      return action.state;
     case 'reset':
       return emptyState();
     default:
@@ -105,12 +100,7 @@ type AppContextValue = {
   undoDose: (doseId: string) => void;
   setSettings: (patch: Partial<Settings>) => void;
   dismiss: (key: string) => void;
-  importState: (state: AppState) => void;
-  /** alias used by onboarding, where there is no child yet */
-  importStore: (state: AppState) => void;
   resetAll: () => void;
-  samples: AppState | null;
-  seedSample: () => void;
 };
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -125,7 +115,6 @@ function uid(): string {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
-  const [, forceSave] = useState(0);
 
   useEffect(() => {
     saveState(state);
@@ -177,17 +166,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       setSettings: (patch) => dispatch({ type: 'settings', patch }),
       dismiss: (key) => dispatch({ type: 'dismiss', key }),
-      importState: (next) => dispatch({ type: 'import', state: next }),
-      importStore: (next) => dispatch({ type: 'import', state: next }),
       resetAll: () => {
         clearState();
         dispatch({ type: 'reset' });
-      },
-      samples: null,
-      seedSample: () => {
-        const sample = buildSample();
-        dispatch({ type: 'import', state: sample });
-        forceSave((n) => n + 1);
       },
     };
   }, [state, addChild]);
@@ -226,38 +207,4 @@ export function useNow(intervalMs = 60_000): Date {
     };
   }, [intervalMs]);
   return now;
-}
-
-export function buildSample(): AppState {
-  const dob = addDays(new Date(), -5 * 30 - 12);
-  const id = 'sample-aarav';
-  const state = normalizeState({
-    version: 1,
-    children: [
-      {
-        id,
-        name: 'Aarav',
-        dob: toISODate(dob),
-        sex: 'boy',
-        accent: 'sun',
-        jeEnabled: false,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    activeId: id,
-    records: {},
-    dismissed: [],
-    settings: { reminders: false, time: '09:00', leadDays: 3 },
-  });
-  const child = state.children[0];
-  const records: Record<string, DoseRecord> = {};
-  for (const dose of DOSES) {
-    if (dose.optional) continue;
-    const view = buildDoseViews(child, {}, new Date()).find((d) => d.doseId === dose.id);
-    if (!view) continue;
-    if (view.dueDate.getTime() < addDays(new Date(), -7).getTime()) {
-      records[dose.id] = { at: view.dueDate.toISOString(), on: toISODate(view.dueDate) };
-    }
-  }
-  return { ...state, records: { [id]: records } };
 }

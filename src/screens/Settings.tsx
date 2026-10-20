@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { ageLabel } from '../lib/engine';
-import { formatLongDay, parseISODate, toISODate } from '../lib/date';
+import { formatLongDay, parseISODate } from '../lib/date';
 import { useApp } from '../lib/store';
-import { ACCENTS, ACCENT_KEYS, exportState, importState as restoreBackup } from '../lib/storage';
-import { SCHEDULE_NOTE, SCHEDULE_SOURCE } from '../data/schedule';
-import { IconDownload, IconEdit, IconPlus, IconShield, IconTrash, IconUpload } from '../components/Icon';
+import { ACCENTS, ACCENT_KEYS } from '../lib/storage';
+import { IconEdit, IconPlus, IconShield, IconTrash } from '../components/Icon';
 
 export function SettingsScreen({
   onEditChild,
@@ -15,36 +14,14 @@ export function SettingsScreen({
   onAddChild: () => void;
   onToast: (message: string, action?: { label: string; run: () => void }) => void;
 }) {
-  const { state, child, setActive, updateChild, removeChild, importState, resetAll } = useApp();
+  const { state, child, setActive, updateChild, removeChild, resetAll } = useApp();
   const children = state.children;
-  const fileRef = useRef<HTMLInputElement>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   if (!child) return null;
   const accent = ACCENTS[child.accent] ?? ACCENTS.sand;
   const recordCount = Object.values(state.records).reduce((n, map) => n + Object.keys(map).length, 0);
-
-  function download() {
-    const blob = new Blob([exportState(state)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `vaccine-routine-${toISODate(new Date())}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    onToast('Backup saved');
-  }
-
-  async function onFile(file: File) {
-    try {
-      const next = restoreBackup(await file.text());
-      importState(next);
-      onToast('Backup restored');
-    } catch {
-      onToast('That file could not be read');
-    }
-  }
 
   return (
     <main
@@ -98,19 +75,6 @@ export function SettingsScreen({
           </div>
         </div>
 
-        <div className="prof-row">
-          <div>
-            <span className="title">Japanese encephalitis doses</span>
-            <span className="sub">Only in districts where JE is endemic. Adds two doses at 9 and 16 months.</span>
-          </div>
-          <button
-            className="switch"
-            role="switch"
-            aria-checked={child.jeEnabled}
-            aria-label="Japanese encephalitis doses"
-            onClick={() => updateChild(child.id, { jeEnabled: !child.jeEnabled })}
-          />
-        </div>
       </section>
 
       <section className="kids">
@@ -146,30 +110,8 @@ export function SettingsScreen({
           <IconShield size={15} />
         </div>
         <p className="data-lede">
-          {recordCount} dose{recordCount === 1 ? '' : 's'} recorded, stored only in this browser. Nothing
-          is uploaded — not even a name.
-        </p>
-        <div className="data-actions">
-          <button className="btn ghost sm" onClick={download}>
-            <IconDownload size={15} /> Export
-          </button>
-          <button className="btn ghost sm" onClick={() => fileRef.current?.click()}>
-            <IconUpload size={15} /> Import
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="sr"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void onFile(file);
-              e.target.value = '';
-            }}
-          />
-        </div>
-        <p className="data-hint">
-          Keep a backup before switching phones. The export is a plain file you can store anywhere.
+          {recordCount} dose{recordCount === 1 ? '' : 's'} recorded. Everything you enter stays in this
+          browser, on this phone.
         </p>
       </section>
 
@@ -202,25 +144,6 @@ export function SettingsScreen({
           </button>
         )}
       </div>
-
-      <section className="about">
-        <span className="eyebrow">About</span>
-        <p className="about-body">{SCHEDULE_NOTE}</p>
-        <dl className="about-grid">
-          <div>
-            <dt>Schedule</dt>
-            <dd>{SCHEDULE_SOURCE}</dd>
-          </div>
-          <div>
-            <dt>App</dt>
-            <dd>Vaccine Routine 1.0</dd>
-          </div>
-        </dl>
-        <p className="source">
-          Built as a quiet, offline-first tracker. If this app ever disagrees with your paediatrician or
-          your immunisation card, they are right.
-        </p>
-      </section>
 
       <div className="reset-line">
         {confirmReset ? (

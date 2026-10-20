@@ -30,20 +30,23 @@ protects against, how it is given, and when its window closes.
 choose. A calendar export (`.ics`) hands the visit dates to the phone's own
 calendar so reminders fire even when the app is closed.
 
-**You** — baby profile, accent colour, multiple children, optional JE doses,
-JSON export/import backups, and the source of the schedule.
+**You** — baby profile, accent colour, and multiple children.
 
 | | | |
 |---|---|---|
 | ![Schedule](screenshots/schedule.jpg) | ![Reminders](screenshots/reminders.jpg) | ![You](screenshots/you.jpg) |
 
+The app opens empty: the parent adds their baby's name and date of birth, and every
+dose is logged by hand. Nothing is pre-filled and nothing leaves the phone.
+
 ## Offline & privacy
 
 - A service worker precaches the app shell, fonts and icons on first load, so it
   opens with no signal — verified with the browser in offline mode.
-- State is written to `localStorage` on every change, with a second backup copy so
-  a corrupt write can't wipe a family's record.
-- Nothing is ever uploaded. No network calls at runtime.
+- State is written to `localStorage` on every change, with a second copy so a
+  corrupt write can't wipe a family's record.
+- The app starts empty — every name and date is entered by the parent, and nothing
+  is ever uploaded. No network calls at runtime.
 - `navigator.storage.persist()` is requested so the browser is less likely to
   evict the data under storage pressure.
 
@@ -51,8 +54,6 @@ JSON export/import backups, and the source of the schedule.
 
 - Built on the MoHFW National Immunization Schedule, including the third fIPV
   dose added on 1 January 2023 and the nationwide PCV rollout.
-- Japanese encephalitis doses are hidden unless turned on, since JE is only given
-  in endemic districts.
 - Due dates are calculated from the date of birth with calendar-month maths
   (a baby born on the 31st gets a 28/29/30-day clamp rather than rolling over).
   A dose is called late only once its recommended window has closed, so a normal
@@ -72,7 +73,7 @@ rendering `scripts/icon.html` and capturing the PNGs in `public/icons/`.
 src/
   data/schedule.ts      vaccine definitions + windows
   lib/engine.ts         due dates, status, progress, reminder plan
-  lib/storage.ts        local persistence, backup copy, import/export
+  lib/storage.ts        local persistence with a spare copy
   lib/reminders.ts      permission, scheduling, catch-up nudges
   lib/calendar.ts       .ics export with VALARMs
   components/           tab bar, sheets, rows, route line

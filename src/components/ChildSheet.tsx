@@ -26,7 +26,6 @@ export function ChildSheet({ open, onClose, childId, onSaved }: Props) {
   const [dob, setDob] = useState('');
   const [sex, setSex] = useState<Sex>('unspecified');
   const [accent, setAccent] = useState<AccentKey>('sand');
-  const [je, setJe] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,13 +35,11 @@ export function ChildSheet({ open, onClose, childId, onSaved }: Props) {
       setDob(existing.dob);
       setSex(existing.sex);
       setAccent(existing.accent);
-      setJe(existing.jeEnabled);
     } else {
       setName('');
       setDob('');
       setSex('unspecified');
       setAccent(ACCENT_KEYS[state.children.length % ACCENT_KEYS.length]);
-      setJe(false);
     }
     setError(null);
   }, [open, existing, state.children.length]);
@@ -65,10 +62,10 @@ export function ChildSheet({ open, onClose, childId, onSaved }: Props) {
       return;
     }
     if (existing) {
-      updateChild(existing.id, { name: trimmed, dob, sex, accent, jeEnabled: je });
+      updateChild(existing.id, { name: trimmed, dob, sex, accent });
       onSaved?.(trimmed);
     } else {
-      const created = addChild({ name: trimmed, dob, sex, accent, jeEnabled: je });
+      const created = addChild({ name: trimmed, dob, sex, accent });
       onSaved?.(created.name);
     }
     onClose();
@@ -139,20 +136,6 @@ export function ChildSheet({ open, onClose, childId, onSaved }: Props) {
             />
           ))}
         </div>
-      </div>
-
-      <div className="setting-row" style={{ marginTop: 10 }}>
-        <div>
-          <div className="title">JE doses</div>
-          <div className="sub">Japanese encephalitis, only in endemic districts.</div>
-        </div>
-        <button
-          className="switch"
-          role="switch"
-          aria-checked={je}
-          aria-label="Japanese encephalitis doses"
-          onClick={() => setJe((v) => !v)}
-        />
       </div>
 
       {error ? <p className="form-error">{error}</p> : null}
