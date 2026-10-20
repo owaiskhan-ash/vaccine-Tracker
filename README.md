@@ -16,6 +16,19 @@ npm run build    # production build + service worker
 npm run preview  # serve the production build
 ```
 
+## Android app
+
+A signed APK is attached to the
+[latest release](https://github.com/owaiskhan-ash/vaccine-Tracker/releases/latest).
+Download `Vaccine-Routine-1.0.apk`, open it on the phone, and allow installing
+from this source once. It wraps the same build: no network, the same local
+storage, and reminders handed to the phone's own scheduler so they arrive with
+the app closed.
+
+The shell lives in `android/` and is built by `.github/workflows/android.yml`.
+The release key is committed with the project so that a later build installs
+over an earlier one. It is a personal sideload key, not a Play Store key.
+
 ![Today](screenshots/today.jpg)
 
 ## What it does

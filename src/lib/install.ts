@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -24,7 +25,8 @@ export function useInstall() {
     window.addEventListener('appinstalled', onInstalled);
     setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent));
     setStandalone(
-      window.matchMedia?.('(display-mode: standalone)').matches ||
+      Capacitor.isNativePlatform() ||
+        window.matchMedia?.('(display-mode: standalone)').matches ||
         (navigator as Navigator & { standalone?: boolean }).standalone === true,
     );
     return () => {

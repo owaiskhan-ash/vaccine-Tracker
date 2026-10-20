@@ -1,0 +1,52 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - "arena/2eef0e9c-vaccine-tracker"
+  workflow_dispatch:
+
+jobs:
+  apk:
+    name: Build 1.0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the web app
+        run: npm run build
+
+      - name: Sync into the Android project
+        run: npx cap sync android
+
+      - name: Build the release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Collect the APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/app-release.apk out/Vaccine-Routine-1.0.apk
+          ls -lh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vaccine-routine-apk
+          path: out/Vaccine-Routine-1.0.apk
+          if-no-files-found: error

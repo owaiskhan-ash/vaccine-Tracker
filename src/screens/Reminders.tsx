@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { calendarMoments, plannedMoments } from '../lib/engine';
 import { formatDayMonth, formatTime, parseISODate, toISODate } from '../lib/date';
 import { useApp, useNow } from '../lib/store';
 import {
+  isNativeApp,
   nextReminderLabel,
   notificationsSupported,
   permissionState,
+  refreshPermission,
   requestPermission,
   sendTestNotification,
 } from '../lib/reminders';
@@ -39,6 +41,11 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
   const [busy, setBusy] = useState(false);
   const [tried, setTried] = useState(false);
   const [added, setAdded] = useState(0);
+
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    void refreshPermission().then((next) => setPermission(next));
+  }, []);
 
   const planned = useMemo(() => plannedMoments(entries), [entries]);
   const future = useMemo(
@@ -178,8 +185,9 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
 
         {permission === 'denied' && tried ? (
           <p className="rem-warn">
-            Notifications are blocked for this site. You can re-enable them in your browser’s site
-            settings. Every planned date still shows inside the app.
+            {isNativeApp()
+              ? 'Notifications are blocked for this app. You can re-enable them in your phone’s settings. Every planned date still shows inside the app.'
+              : 'Notifications are blocked for this site. You can re-enable them in your browser’s site settings. Every planned date still shows inside the app.'}
           </p>
         ) : permission === 'default' && on ? (
           <p className="rem-warn">One more step: allow notifications above so the nudge can reach you.</p>
@@ -262,9 +270,9 @@ export function RemindersScreen({ onAddEntry }: { onAddEntry: () => void }) {
       <div className="note-card">
         <IconInfo size={16} />
         <p>
-          This app has no server and no account. Reminders are scheduled by your phone, so they arrive
-          while the app is open, and a catch-up nudge greets you the next time you open it. Add the app
-          to your home screen to keep it one tap away.
+          {isNativeApp()
+            ? 'This app has no server and no account. Reminders are scheduled by your phone, so they arrive even when the app is closed.'
+            : 'This app has no server and no account. Reminders are scheduled by your phone, so they arrive while the app is open, and a catch-up nudge greets you the next time you open it. Add the app to your home screen to keep it one tap away.'}
         </p>
       </div>
 

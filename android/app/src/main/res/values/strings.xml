@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Vaccine Routine</string>
+    <string name="title_activity_main">Vaccine Routine</string>
+    <string name="package_name">com.vaccineroutine.app</string>
+    <string name="custom_url_scheme">com.vaccineroutine.app</string>
+</resources>

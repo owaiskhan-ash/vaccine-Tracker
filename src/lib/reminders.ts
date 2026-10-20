@@ -1,25 +1,83 @@
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { plannedMoments, reminderMoments } from './engine';
 import { formatDay, parseISODate, startOfDay, toISODate } from './date';
 import type { AppState } from './types';
 
 const SENT_KEY = 'vaccine-routine:sent';
+const CHANNEL = 'vr-reminders';
+
+/** Inside the Android shell the web Notification API does not exist, so the
+ *  same reminders are handed to the phone's own notification scheduler. */
+const NATIVE = Capacitor.isNativePlatform();
+
+export function isNativeApp(): boolean {
+  return NATIVE;
+}
+
+let nativePermission: NotificationPermission = 'default';
+let nativeChecked = false;
+let channelReady = false;
 
 export function notificationsSupported(): boolean {
+  if (NATIVE) return true;
   return 'Notification' in window && 'serviceWorker' in navigator;
 }
 
 export function permissionState(): NotificationPermission | 'unsupported' {
+  if (NATIVE) return nativePermission;
   if (!notificationsSupported()) return 'unsupported';
   return Notification.permission;
 }
 
+export async function refreshPermission(): Promise<NotificationPermission | 'unsupported'> {
+  if (!NATIVE) return permissionState();
+  try {
+    const status = await LocalNotifications.checkPermissions();
+    nativePermission =
+      status.display === 'granted' ? 'granted' : status.display === 'denied' ? 'denied' : 'default';
+  } catch {
+    nativePermission = 'denied';
+  }
+  nativeChecked = true;
+  return nativePermission;
+}
+
 export async function requestPermission(): Promise<boolean> {
+  if (NATIVE) {
+    try {
+      const status = await LocalNotifications.requestPermissions();
+      nativePermission =
+        status.display === 'granted' ? 'granted' : status.display === 'denied' ? 'denied' : 'default';
+      nativeChecked = true;
+      return nativePermission === 'granted';
+    } catch {
+      return false;
+    }
+  }
   if (!notificationsSupported()) return false;
   if (Notification.permission === 'granted') return true;
   try {
     return (await Notification.requestPermission()) === 'granted';
   } catch {
     return false;
+  }
+}
+
+async function ensureChannel(): Promise<void> {
+  if (!NATIVE || channelReady) return;
+  try {
+    await LocalNotifications.createChannel({
+      id: CHANNEL,
+      name: 'Vaccination reminders',
+      description: 'One nudge before each planned date, and one on the day.',
+      importance: 4,
+      visibility: 1,
+      vibration: true,
+    });
+    channelReady = true;
+  } catch {
+    /* the default channel still works */
   }
 }
 
@@ -32,7 +90,34 @@ async function registration(): Promise<ServiceWorkerRegistration | null> {
   }
 }
 
+let immediateId = 1;
+
 export async function showNotification(title: string, body: string, tag = 'vr-reminder'): Promise<void> {
+  if (NATIVE) {
+    await ensureChannel();
+    if (!nativeChecked) await refreshPermission();
+    if (nativePermission !== 'granted') return;
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: 900_000_000 + (immediateId++ % 10_000),
+            title,
+            body,
+            channelId: CHANNEL,
+            smallIcon: 'ic_stat_vr',
+            iconColor: '#E4CBA8',
+            schedule: { at: new Date(Date.now() + 800), allowWhileIdle: true },
+            extra: { tag },
+          },
+        ],
+      });
+    } catch {
+      /* never let a missed nudge break the app */
+    }
+    return;
+  }
+
   const reg = await registration();
   if (!reg) return;
   const options = {
@@ -129,12 +214,90 @@ export function clearScheduled(): void {
   timers = [];
 }
 
+/* ---- native scheduling, handed to the phone ---- */
+
+function momentId(dateISO: string, slot: number): number {
+  const digits = Number(dateISO.replace(/-/g, '')) || 1;
+  return ((digits % 100_000_000) * 10 + slot) % 2_100_000_000;
+}
+
+async function syncNative(state: AppState, now: Date): Promise<void> {
+  await ensureChannel();
+  if (!nativeChecked) await refreshPermission();
+
+  try {
+    const pending = await LocalNotifications.getPending();
+    if (pending.notifications.length) {
+      await LocalNotifications.cancel({
+        notifications: pending.notifications.map((n) => ({ id: n.id })),
+      });
+    }
+  } catch {
+    /* noop */
+  }
+
+  if (!state.settings.reminders || nativePermission !== 'granted') return;
+  const child = activeChild(state);
+  if (!child) return;
+
+  const horizon = now.getTime() + 120 * 86_400_000;
+  const notifications = [];
+  for (const moment of plannedMoments(state.entries[child.id] ?? [])) {
+    const due = reminderDateFor(state, moment.date);
+    const lead = new Date(due);
+    lead.setDate(lead.getDate() - state.settings.leadDays);
+    const names = `${child.name}: ${moment.titles.join(' · ')}`;
+    for (const [slot, at, title] of [
+      [0, lead, 'Vaccination coming up'],
+      [1, due, 'Vaccination due today'],
+    ] as const) {
+      const time = at.getTime();
+      if (time <= now.getTime() || time > horizon) continue;
+      notifications.push({
+        id: momentId(moment.date, slot),
+        title,
+        body: `${names}, ${formatDay(due)}.`,
+        channelId: CHANNEL,
+        smallIcon: 'ic_stat_vr',
+        iconColor: '#E4CBA8',
+        schedule: { at, allowWhileIdle: true },
+        extra: { date: moment.date },
+      });
+    }
+    if (notifications.length >= 40) break;
+  }
+
+  if (notifications.length) {
+    try {
+      await LocalNotifications.schedule({ notifications });
+    } catch {
+      /* the dates still live in the app */
+    }
+  }
+}
+
+let nativeTimer: number | null = null;
+let nativeState: AppState | null = null;
+
+function queueNative(state: AppState, now: Date): void {
+  nativeState = state;
+  if (nativeTimer) window.clearTimeout(nativeTimer);
+  nativeTimer = window.setTimeout(() => {
+    if (nativeState) void syncNative(nativeState, now);
+  }, 500);
+}
+
 /**
- * Schedules the next few reminders while the app is alive. Because a web app
- * cannot run a background alarm, it also shows a catch-up nudge when the app is
- * opened after a planned date has arrived.
+ * Schedules the next few reminders. On the web the app can only keep timers
+ * while it is open, plus a catch-up nudge; in the Android shell the dates go
+ * to the phone's alarm clock and arrive with the app closed.
  */
 export async function syncReminders(state: AppState, now = new Date()): Promise<void> {
+  if (NATIVE) {
+    queueNative(state, now);
+    return;
+  }
+
   clearScheduled();
   if (!state.settings.reminders || !notificationsSupported() || Notification.permission !== 'granted') return;
   const child = activeChild(state);
