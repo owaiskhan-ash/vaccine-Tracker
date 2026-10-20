@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vaccine Routine — icon</title>
+    <style>
+      @font-face {
+        font-family: 'Inter Tight';
+        src: url('../src/assets/fonts/inter-tight-latin.woff2') format('woff2-variations');
+        font-weight: 100 900;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { background: #0c0b0a; }
+      #stage { display: grid; place-items: center; }
+      .icon {
+        position: relative;
+        width: var(--size);
+        height: var(--size);
+        border-radius: calc(var(--size) * var(--radius, 0.226));
+        overflow: hidden;
+        background:
+          radial-gradient(130% 130% at 24% 4%, #423c34 0%, #2f2a25 30%, #23201c 58%, #1a1714 100%);
+        box-shadow:
+          inset 0 0 0 calc(var(--size) * 0.0035) rgba(255, 255, 255, 0.055),
+          inset 0 calc(var(--size) * 0.012) calc(var(--size) * 0.028) rgba(255, 255, 255, 0.05),
+          inset 0 calc(var(--size) * -0.02) calc(var(--size) * 0.04) rgba(0, 0, 0, 0.55);
+        isolation: isolate;
+      }
+      .icon::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='240' height='240' filter='url(%23n)' opacity='0.5'/></svg>");
+        opacity: 0.055;
+        mix-blend-mode: overlay;
+        pointer-events: none;
+      }
+      .mark {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-family: 'Inter Tight', sans-serif;
+        font-weight: 800;
+        letter-spacing: calc(var(--size) * -0.055);
+        font-size: calc(var(--size) * 0.585 * var(--mark-scale, 1));
+        line-height: 1;
+        transform: translateY(calc(var(--size) * -0.005));
+      }
+      /* the debossed groove: shadowed face + light catching the lower lip */
+      .mark span {
+        display: block;
+        color: var(--face, #0b0a09);
+        filter:
+          drop-shadow(0 calc(var(--size) * 0.0068) calc(var(--size) * 0.0016) rgba(255, 248, 235, 0.17))
+          drop-shadow(0 calc(var(--size) * 0.013) calc(var(--size) * 0.004) rgba(255, 240, 220, 0.05));
+      }
+      .grain { position: absolute; inset: 0; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <script>
+      // Render as many sizes as the query string asks for, stacked for capture.
+      const params = new URLSearchParams(location.search);
+      const size = Number(params.get('size') || 512);
+      const stage = document.getElementById('stage');
+      stage.style.setProperty('--stage', size + 'px');
+      const icon = document.createElement('div');
+      icon.className = 'icon';
+      icon.style.setProperty('--size', size + 'px');
+      const mark = document.createElement('div');
+      mark.className = 'mark';
+      const span = document.createElement('span');
+      span.textContent = params.get('text') || 'VR';
+      const bleed = params.get('bleed') === '1';
+      if (bleed) icon.style.setProperty('--radius', '0');
+      if (params.get('mono') === '1') {
+        icon.style.setProperty('--face', '#ffffff');
+        icon.style.background = 'transparent';
+        icon.style.boxShadow = 'none';
+        icon.style.overflow = 'visible';
+        icon.querySelectorAll('*').forEach(() => {});
+        stage.style.background = 'transparent';
+        document.documentElement.style.background = 'transparent';
+        document.body.style.background = 'transparent';
+      }
+      const scale = params.get('mark');
+      if (scale) icon.style.setProperty('--mark-scale', scale);
+      mark.appendChild(span);
+      icon.appendChild(mark);
+      stage.appendChild(icon);
+      stage.style.width = size + 'px';
+      stage.style.height = size + 'px';
+      document.body.style.width = size + 'px';
+      document.body.style.height = size + 'px';
+    </script>
+  </body>
+</html>
